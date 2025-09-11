@@ -1,0 +1,20 @@
+[project]
+name = "vibe-checker"
+version = "0.1.0"
+description = "Climate policy radar vibe checker"
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pyright>=1.1.0",
+]
+
+[tool.pyright]
+include = ["infra/", "pipeline/"]
+exclude = ["**/__pycache__"]
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportMissingImports = false
+reportMissingModuleSource = false
+
