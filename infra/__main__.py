@@ -1,7 +1,8 @@
+import json
 import os
 
 import pulumi
-from pulumi_aws import ec2, ecr, ecs, elbv2, iam, s3
+from pulumi_aws import cloudwatch, ec2, ecr, ecs, iam, lb, s3
 
 app_name = "cpr-vibe-checker"
 aws_region = os.getenv("AWS_REGION", "eu-west-1")
@@ -208,7 +209,7 @@ iam.RolePolicyAttachment(
 )
 
 # Application Load Balancer
-alb = elbv2.LoadBalancer(
+alb = lb.LoadBalancer(
     f"{app_name}-alb",
     internal=False,
     load_balancer_type="application",
@@ -217,29 +218,29 @@ alb = elbv2.LoadBalancer(
 )
 
 # Target group for ECS service
-target_group = elbv2.TargetGroup(
+target_group = lb.TargetGroup(
     f"{app_name}-tg",
     port=80,
     protocol="HTTP",
     target_type="ip",
     vpc_id=vpc.id,
-    health_check=elbv2.TargetGroupHealthCheckArgs(
+    health_check=lb.TargetGroupHealthCheckArgs(
         path="/",
         protocol="HTTP",
         matcher="200",
-        interval_seconds=30,
-        timeout_seconds=5,
+        interval=30,
+        timeout=5,
     ),
 )
 
 # ALB listener
-listener = elbv2.Listener(
+listener = lb.Listener(
     f"{app_name}-listener",
     load_balancer_arn=alb.arn,
     port=80,
     protocol="HTTP",
     default_actions=[
-        elbv2.ListenerDefaultActionArgs(
+        lb.ListenerDefaultActionArgs(
             type="forward",
             target_group_arn=target_group.arn,
         )
@@ -247,7 +248,7 @@ listener = elbv2.Listener(
 )
 
 # CloudWatch log group
-log_group = ecs.LogGroup(
+log_group = cloudwatch.LogGroup(
     f"{app_name}-log-group",
     name=f"/ecs/{app_name}",
     retention_in_days=7,
@@ -263,38 +264,32 @@ task_definition = ecs.TaskDefinition(
     requires_compatibilities=["FARGATE"],
     execution_role_arn=execution_role.arn,
     task_role_arn=task_role.arn,
-    container_definitions=pulumi.Output.all(bucket.bucket).apply(
-        lambda args: f"""[
-        {{
-            "name": "{app_name}",
-            "image": "{repository.repository_url}:latest",
-            "portMappings": [
-                {{
-                    "containerPort": 80,
-                    "hostPort": 80,
-                    "protocol": "tcp"
-                }}
-            ],
-            "environment": [
-                {{
-                    "name": "S3_BUCKET_NAME",
-                    "value": "{args[0]}"
-                }},
-                {{
-                    "name": "AWS_REGION",
-                    "value": "{aws_region}"
-                }}
-            ],
-            "logConfiguration": {{
-                "logDriver": "awslogs",
-                "options": {{
-                    "awslogs-group": "/ecs/{app_name}",
-                    "awslogs-region": "{aws_region}",
-                    "awslogs-stream-prefix": "ecs"
-                }}
-            }}
-        }}
-    ]"""
+    container_definitions=pulumi.Output.all(
+        bucket.bucket, repository.repository_url
+    ).apply(
+        lambda args: json.dumps(
+            [
+                {
+                    "name": app_name,
+                    "image": f"{args[1]}:latest",
+                    "portMappings": [
+                        {"containerPort": 80, "hostPort": 80, "protocol": "tcp"}
+                    ],
+                    "environment": [
+                        {"name": "S3_BUCKET_NAME", "value": args[0]},
+                        {"name": "AWS_REGION", "value": aws_region},
+                    ],
+                    "logConfiguration": {
+                        "logDriver": "awslogs",
+                        "options": {
+                            "awslogs-group": f"/ecs/{app_name}",
+                            "awslogs-region": aws_region,
+                            "awslogs-stream-prefix": "ecs",
+                        },
+                    },
+                }
+            ]
+        )
     ),
 )
 
