@@ -2,12 +2,28 @@
 name = "vibe-checker"
 version = "0.1.0"
 description = "Climate policy radar vibe checker"
-requires-python = ">=3.8"
+requires-python = ">=3.13"
 dependencies = []
 
 [project.optional-dependencies]
+infra = [
+    "pulumi>=3.0.0,<4.0.0",
+    "pulumi-aws>=7.0.0,<8.0.0",
+]
+
+pipeline = [
+    "prefect[aws]>=3.4.15",
+    "rich>=14.1.0",
+    "sentence-transformers>=5.1.0",
+    "transformers>=4.56.1",
+]
+
 dev = [
     "pyright>=1.1.0",
+]
+
+all = [
+    "vibe-checker[infra,pipeline,dev]",
 ]
 
 [tool.pyright]

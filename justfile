@@ -10,27 +10,37 @@ help:
     just --list
 
 # Install all dependencies
-install: install-pipeline install-webapp install-hooks
+install: install-python install-webapp install-hooks
     echo "All dependencies installed."
 
-# Install pipeline dependencies via uv
-install-pipeline:
-    cd {{pipeline_dir}} && uv sync
+# Install Python dependencies via uv (all groups by default)
+install-python:
+    uv sync --all-extras
 
-# Install pre-commit hooks for pipeline via uv
+# Install specific Python dependency groups
+install-infra:
+    uv sync --extra infra
+
+install-pipeline:
+    uv sync --extra pipeline
+
+install-dev:
+    uv sync --extra dev
+
+# Install pre-commit hooks via uv
 install-hooks:
-    cd {{pipeline_dir}} && uv run pre-commit install
+    uv run pre-commit install
 
 # Install webapp dependencies via npm
 install-webapp:
     cd {{webapp_dir}} && npm ci
 
 # Lint all code
-lint: lint-pipeline lint-webapp
+lint: lint-python lint-webapp
 
-# Lint pipeline code via pre-commit
-lint-pipeline:
-    cd {{pipeline_dir}} && uv run pre-commit run --all-files
+# Lint Python code via pre-commit (covers both infra and pipeline)
+lint-python:
+    uv run pre-commit run --all-files
 
 # Lint webapp code via ESLint
 lint-webapp:
