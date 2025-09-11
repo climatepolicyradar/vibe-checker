@@ -221,3 +221,5 @@ __marimo__/
 ## contents of the data directory
 data/**/*
 !data/.gitkeep
+
+*.pyc
