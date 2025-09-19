@@ -13,9 +13,10 @@ infra = [
 
 pipeline = [
     "prefect[aws]>=3.4.15",
-    "rich>=14.1.0",
+    "rich",
     "sentence-transformers>=5.1.0",
     "transformers>=4.56.1",
+    "knowledge-graph @ git+https://github.com/climatepolicyradar/knowledge-graph@2d2f1f7e10825114bb6419a6b5783700936f5bc4"
 ]
 
 dev = [
