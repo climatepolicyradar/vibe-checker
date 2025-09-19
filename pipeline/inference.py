@@ -6,10 +6,9 @@ from datetime import datetime
 from pathlib import Path
 
 import boto3
+import numpy as np
 import pandas as pd
 import yaml
-
-# Import your existing classes
 from knowledge_graph.classifier import ClassifierFactory
 from knowledge_graph.identifiers import WikibaseID
 from knowledge_graph.labelled_passage import LabelledPassage
@@ -22,6 +21,7 @@ from prefect.futures import wait
 from prefect.logging import get_logger
 from prefect.task_runners import ThreadPoolTaskRunner
 from rich.logging import RichHandler
+from sentence_transformers import SentenceTransformer
 
 # Constants
 BATCH_SIZE = 1000
@@ -67,7 +67,7 @@ def push_object_bytes_to_s3(s3_client: S3Client, key: str | Path, bytes: bytes) 
 
 
 @task(retries=3, retry_delay_seconds=5)
-def load_dataset(
+def load_passages_dataset(
     passages_dataset_file_name: str = "passages_dataset.feather",
 ) -> pd.DataFrame:
     """Load the passages dataset from S3."""
@@ -101,8 +101,33 @@ def load_config(config_file_name: str = "concepts.yml") -> list[WikibaseID]:
     return wikibase_ids
 
 
+@task(retries=3, retry_delay_seconds=5)
+def load_embeddings(
+    embeddings_file_name: str = "passages_embeddings.npy",
+) -> np.ndarray:
+    """Load the passages embeddings from S3."""
+    s3_client = get_s3_client()
+    bytes_from_s3 = get_object_bytes_from_s3(s3_client, embeddings_file_name)
+    return np.load(io.BytesIO(bytes_from_s3))
+
+
+@task(retries=3, retry_delay_seconds=5)
+def load_embeddings_metadata(
+    embeddings_metadata_file_name: str = "passages_embeddings_metadata.json",
+) -> dict:
+    """Load the passages embeddings metadata from S3."""
+    s3_client = get_s3_client()
+    bytes_from_s3 = get_object_bytes_from_s3(s3_client, embeddings_metadata_file_name)
+    return json.load(io.BytesIO(bytes_from_s3))
+
+
 @task(retries=2, retry_delay_seconds=10)
-def process_single_concept(wikibase_id: WikibaseID, passages: list[str]) -> dict:
+def process_single_concept(
+    wikibase_id: WikibaseID,
+    passages: list[str],
+    passages_embeddings: np.ndarray,
+    passages_embeddings_metadata: dict,
+) -> dict:
     """
     Process inference for a single concept.
 
@@ -114,13 +139,86 @@ def process_single_concept(wikibase_id: WikibaseID, passages: list[str]) -> dict
         # Create progress artifact for this concept
         progress_id = create_progress_artifact(
             progress=0.0,
-            key=f"concept-{wikibase_id}",
+            key=f"concept-{wikibase_id}".lower(),
             description=f"Processing concept {wikibase_id}",
         )
 
         wikibase = WikibaseSession()
         concept = wikibase.get_concept(wikibase_id)
         logger.info(f"Loaded concept: {concept}")
+
+        embedding_model_name = passages_embeddings_metadata["embedding_model_name"]
+        embedding_model = SentenceTransformer(embedding_model_name)
+        concept_embedding = embedding_model.encode(concept.to_markdown())
+
+        # Batch compute similarities using pre-computed embeddings
+        logger.info(f"Computing similarities for {len(passages)} passages...")
+        similarities = passages_embeddings @ concept_embedding  # Shape: (n_passages,)
+
+        similarity_threshold = 0.65
+        min_passages = 10_000
+        max_passages = 100_000
+
+        # Get indices and similarities for all passages
+        passage_indices = list(range(len(passages)))
+        passage_similarities = list(zip(passage_indices, similarities, passages))
+
+        # Sort by similarity (highest first)
+        passage_similarities.sort(key=lambda x: x[1], reverse=True)
+
+        # Separate the passages which are above and below the threshold similarity to
+        # our concept embedding.
+        above_threshold = [
+            (idx, sim, text)
+            for idx, sim, text in passage_similarities
+            if sim > similarity_threshold
+        ]
+        below_threshold = [
+            (idx, sim, text)
+            for idx, sim, text in passage_similarities
+            if sim <= similarity_threshold
+        ]
+
+        logger.info(
+            f"Found {len(above_threshold)} passages above threshold {similarity_threshold}"
+        )
+        logger.info(f"Found {len(below_threshold)} passages below threshold")
+
+        # Selection strategy:
+        # 1. If we have enough above threshold, take all of them, up to max_passages.
+        # 2. If we don't have enough above threshold, take everything which is above
+        #    the threshold, and then supplement the list with the passages which are
+        #    closest to the threshold to reach min_passages.
+        selected_passages = []
+        if len(above_threshold) >= min_passages:
+            selected_passages = above_threshold
+        else:
+            selected_passages = above_threshold.copy()
+            # Sort below_threshold by distance from threshold (closest first)
+            below_threshold.sort(key=lambda x: abs(x[1] - similarity_threshold))
+            remaining_needed = min_passages - len(selected_passages)
+            selected_passages.extend(below_threshold[:remaining_needed])
+
+        # Ensure we don't exceed max_passages in either scenario
+        selected_passages = selected_passages[:max_passages]
+
+        # Sort selected passages back to original order for consistent processing
+        selected_passages.sort(key=lambda x: x[0])
+        passages_to_predict_on = [text for _, _, text in selected_passages]
+
+        logger.info(f"Selected {len(passages_to_predict_on)} passages")
+        logger.info(
+            f"Similarity range: {min(s[1] for s in selected_passages):.3f} - {max(s[1] for s in selected_passages):.3f}"
+        )
+
+        if above_threshold:
+            above_in_selection = sum(
+                1 for s in selected_passages if s[1] > similarity_threshold
+            )
+            logger.info(
+                f"Above threshold in selection: {above_in_selection}/{len(selected_passages)} ({above_in_selection / len(selected_passages) * 100:.1f}%)"
+            )
+
         classifier = ClassifierFactory.create(concept)
         logger.info(f"Created a {classifier}")
 
@@ -130,19 +228,20 @@ def process_single_concept(wikibase_id: WikibaseID, passages: list[str]) -> dict
         n_batches = (len(passages) + BATCH_SIZE - 1) // BATCH_SIZE
 
         labelled_passages: list[LabelledPassage] = []
-        for i, batch in enumerate(chunked_even(passages, BATCH_SIZE)):
+        for i, batch in enumerate(chunked_even(passages_to_predict_on, BATCH_SIZE)):
             predictions = classifier.predict_batch(batch)
             for text, predicted_spans in zip(batch, predictions):
                 labelled_passage = LabelledPassage(text=text, spans=predicted_spans)
                 labelled_passages.append(labelled_passage)
 
-            # Update progress after each batch
-            progress = ((i + 1) / n_batches) * 100
-            update_progress_artifact(
-                progress_id,  # type: ignore
-                progress=progress,
-                description=f"Processed batch {i + 1}/{n_batches}",
-            )
+            # Update progress every 50 batches (or on the last batch)
+            if (i + 1) % 50 == 0 or (i + 1) == n_batches:
+                progress = ((i + 1) / n_batches) * 100
+                update_progress_artifact(
+                    progress_id,  # type: ignore
+                    progress=progress,
+                    description=f"Processed batch {i + 1}/{n_batches}",
+                )
 
         logger.info(f"Generated {len(labelled_passages)} labelled passages")
 
@@ -239,7 +338,7 @@ def process_single_concept(wikibase_id: WikibaseID, passages: list[str]) -> dict
     timeout_seconds=None,
     task_runner=ThreadPoolTaskRunner(max_workers=3),  # pyright: ignore[reportArgumentType]
 )
-def inference_flow():
+def vibe_checker_inference():
     """
     Run parallel inference on multiple concepts using their classifiers.
 
@@ -254,37 +353,46 @@ def inference_flow():
 
     ```
     s3://{BUCKET_NAME}/
-    ├── passages_dataset.feather   # Input: Dataset of passages for inference
-    ├── concepts.yml               # Input: List of Wikibase concept IDs
-    ├── {concept_id}/              # Output: One directory per concept
-    │   ├── {classifier_id}/       # Output: One directory per classifier
-    │   │   ├── predictions.jsonl  # Output: All predictions (positive + negative)
-    │   │   ├── concept.json       # Output: Concept metadata at inference time
-    │   │   ├── classifier.json    # Output: Classifier metadata and config
-    │   │   └── stats.json         # Output: Performance statistics
-    │   └── ...                    # Additional classifiers for same concept
-    └── ...                        # Additional concepts
+    ├── concepts.yml                       # Input: List of Wikibase IDs for which we will run inference
+    ├── passages_dataset.feather           # Input: Dataset of passages for inference
+    ├── passages_embeddings.npy            # Input: Embeddings of passages for inference
+    ├── passages_embeddings_metadata.json  # Input: Metadata about the model used to generate the passages embeddings
+    ├── {concept_id}/                      # Output: One directory per concept
+    │   ├── {classifier_id}/               # Output: One directory per classifier
+    │   │   ├── predictions.jsonl          # Output: All predictions (positive + negative)
+    │   │   ├── concept.json               # Output: Concept metadata at inference time
+    │   │   ├── classifier.json            # Output: Classifier metadata and config
+    │   │   └── stats.json                 # Output: Statistics about the results, eg f1 across various equity strata
+    │   └── ...                            # Additional classifiers for same concept
+    └── ...                                # Additional concepts
     ```
 
     Returns:
         List[dict]: Results for each concept with keys:
-            - concept_id: Wikibase ID of the concept
-            - preferred_label: Human-readable concept name
-            - total_passages: Total passages processed
-            - positive_passages: Passages with matches found
-            - percentage: Match rate (0-100)
-            - output_prefix: S3 path where results are stored
-            - status: "success" or "failed"
-            - error: Error message (if status == "failed")
+            - concept_id: wikibase_id
+            - preferred_label: concept.preferred_label
+            - n_passages: n_passages
+            - n_positive_passages: n_positive_passages
+            - percentage: percentage_positive
+            - output_prefix: output_prefix
+            - status: "success"
     """
     # Load shared data
     logger.info("Loading dataset...")
-    dataset = load_dataset()
+    dataset = load_passages_dataset()
     logger.info(f"Loaded {len(dataset)} passages from the dataset")
 
-    logger.info("Loading concept configurations...")
+    logger.info("Loading wikibase IDs...")
     wikibase_ids = load_config()
     logger.info(f"Loaded {len(wikibase_ids)} wikibase IDs from the config")
+
+    logger.info("Loading embeddings...")
+    passages_embeddings = load_embeddings()
+    logger.info(f"Loaded {passages_embeddings.shape[0]} embeddings")
+
+    logger.info("Loading embeddings metadata...")
+    passages_embeddings_metadata = load_embeddings_metadata()
+    logger.info("Loaded embeddings generation metadata")
 
     passages = dataset["text_block.text"].tolist()
 
@@ -302,7 +410,10 @@ def inference_flow():
     concept_futures = []
     for wikibase_id in wikibase_ids:
         future = process_single_concept.submit(
-            wikibase_id=wikibase_id, passages=passages
+            wikibase_id=wikibase_id,
+            passages=passages,
+            passages_embeddings=passages_embeddings,
+            passages_embeddings_metadata=passages_embeddings_metadata,
         )
         concept_futures.append(future)
 
@@ -364,4 +475,4 @@ def inference_flow():
 
 
 if __name__ == "__main__":
-    flow_results = inference_flow()
+    flow_results = vibe_checker_inference()
