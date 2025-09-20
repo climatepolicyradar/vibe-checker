@@ -3,27 +3,31 @@
 import { useEffect, useState } from "react";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
-export default function Home() {
-  const [concepts, setConcepts] = useState<string[]>([]);
+export default function ConceptPage() {
+  const params = useParams();
+  const conceptId = params.concept_id as string;
+
+  const [classifiers, setClassifiers] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    const fetchConcepts = async () => {
+    const fetchClassifiers = async () => {
       try {
-        const response = await fetch("/api/concepts");
+        const response = await fetch(`/api/concepts/${conceptId}/classifiers`);
         const result = await response.json();
 
         if (result.success) {
-          setConcepts(result.data);
+          setClassifiers(result.data);
         } else {
-          throw new Error(result.error || "Failed to fetch concepts");
+          throw new Error(result.error || "Failed to fetch classifiers");
         }
       } catch (err) {
-        console.error("Error fetching concepts:", err);
+        console.error("Error fetching classifiers:", err);
         setError(
-          `Failed to fetch concepts: ${
+          `Failed to fetch classifiers: ${
             err instanceof Error ? err.message : "Unknown error"
           }`
         );
@@ -32,15 +36,30 @@ export default function Home() {
       }
     };
 
-    fetchConcepts();
-  }, []);
+    if (conceptId) {
+      fetchClassifiers();
+    }
+  }, [conceptId]);
 
   return (
     <div style={{ padding: "20px", fontFamily: "monospace" }}>
-      <h1>Vibe Checker Predictions</h1>
-      <p>Select a concept to view available classifiers and predictions:</p>
+      <div style={{ marginBottom: "20px" }}>
+        <Link
+          href="/"
+          style={{
+            color: "#666",
+            textDecoration: "none",
+            fontSize: "14px",
+          }}
+        >
+          ← Back to all concepts
+        </Link>
+      </div>
 
-      {loading && <p>Loading concepts...</p>}
+      <h1>Concept: {conceptId}</h1>
+      <p>Select a classifier to view predictions:</p>
+
+      {loading && <p>Loading classifiers...</p>}
 
       {error && (
         <div style={{ color: "red", marginBottom: "20px" }}>
@@ -48,14 +67,14 @@ export default function Home() {
         </div>
       )}
 
-      {!loading && !error && concepts.length > 0 && (
+      {!loading && !error && classifiers.length > 0 && (
         <div>
-          <h2>Available Concepts:</h2>
+          <h2>Available Classifiers:</h2>
           <ul style={{ listStyle: "none", padding: 0 }}>
-            {concepts.map((conceptId) => (
-              <li key={conceptId} style={{ marginBottom: "10px" }}>
+            {classifiers.map((classifierId) => (
+              <li key={classifierId} style={{ marginBottom: "10px" }}>
                 <Link
-                  href={`/${conceptId}`}
+                  href={`/${conceptId}/${classifierId}`}
                   style={{
                     display: "inline-block",
                     padding: "10px 15px",
@@ -73,11 +92,17 @@ export default function Home() {
                     e.currentTarget.style.backgroundColor = "#f0f0f0";
                   }}
                 >
-                  {conceptId}
+                  {classifierId}
                 </Link>
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {!loading && !error && classifiers.length === 0 && (
+        <div style={{ color: "#666" }}>
+          <p>No classifiers found for concept {conceptId}</p>
         </div>
       )}
     </div>
