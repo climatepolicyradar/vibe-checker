@@ -4,22 +4,25 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const [predictions, setPredictions] = useState<string>("");
-  const [bucketName, setBucketName] = useState<string>("");
-  const [predictionsKey, setPredictionsKey] = useState<string>("");
   const [s3Uri, setS3Uri] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
+  // Q572/f4wd8v89
+  // Q53/urc4yfb5
+  const wikibaseId = "Q572";
+  const classifierId = "f4wd8v89";
+
   useEffect(() => {
     const fetchPredictions = async () => {
       try {
-        const response = await fetch("/api/predictions");
+        const response = await fetch(
+          `/api/predictions/${wikibaseId}/${classifierId}`
+        );
         const result = await response.json();
 
         if (result.success) {
           setPredictions(result.data);
-          setBucketName(result.bucket);
-          setPredictionsKey(result.key);
           setS3Uri(result.s3Uri);
         } else {
           throw new Error(result.error || "Failed to fetch predictions");
@@ -45,6 +48,12 @@ export default function Home() {
         <div style={{ padding: "20px", fontFamily: "monospace" }}>
           <h1>Vibe Checker Predictions</h1>
           <p>Fetching predictions from: {s3Uri || "Loading..."}</p>
+          {(wikibaseId || classifierId) && (
+            <p>
+              <strong>Concept:</strong> {wikibaseId} |{" "}
+              <strong>Classifier:</strong> {classifierId}
+            </p>
+          )}
 
           {loading && <p>Loading predictions...</p>}
 
