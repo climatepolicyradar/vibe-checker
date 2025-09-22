@@ -5,7 +5,7 @@ import { fromIni } from "@aws-sdk/credential-providers";
 
 export async function GET(
   request: Request,
-  { params }: { params: { wikibase_id: string; classifier_id: string } }
+  { params }: { params: { wikibase_id: string; classifier_id: string } },
 ) {
   try {
     const { searchParams } = new URL(request.url);
@@ -20,7 +20,7 @@ export async function GET(
           error:
             "Invalid pagination parameters. Page must be >= 1, pageSize must be between 1 and 100",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -76,7 +76,7 @@ export async function GET(
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

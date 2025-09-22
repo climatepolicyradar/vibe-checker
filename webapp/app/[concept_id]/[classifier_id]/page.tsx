@@ -73,27 +73,32 @@ export default function PredictionsPage() {
   }, [conceptId, classifierId, page, pageSize]);
 
   return (
-    <div className="min-h-screen p-6 bg-neutral-0 dark:bg-neutral-900">
+    <div className="bg-neutral-0 min-h-screen p-6 dark:bg-neutral-900">
       <div className="mx-auto max-w-7xl">
         {/* Controls section including header */}
-        <div className="mb-6 rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+        <div className="bg-neutral-0 mb-6 rounded-lg border border-neutral-200 p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
           <div className="flex flex-col gap-4">
             <div>
               <h1 className="font-serif text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
                 <Link
                   href={`/${conceptId}`}
-                  className="text-neutral-900 hover:text-neutral-600 dark:text-neutral-100 dark:hover:text-neutral-300 transition-colors"
+                  className="text-accent-primary transition-colors hover:text-accent-secondary"
                 >
                   {conceptId}
                 </Link>
-                <span className="text-neutral-500 dark:text-neutral-400"> / </span>
-                <span className="text-neutral-700 dark:text-neutral-200">{classifierId}</span>
+                <span className="text-neutral-500 dark:text-neutral-400">
+                  {" "}
+                  /{" "}
+                </span>
+                <span className="text-neutral-700 dark:text-neutral-200">
+                  {classifierId}
+                </span>
               </h1>
               <div className="mt-2">
                 <a
                   href="#"
                   target="_blank"
-                  className="text-sm text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 transition-colors"
+                  className="text-sm text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
                 >
                   View in Wikibase →
                 </a>
@@ -104,7 +109,7 @@ export default function PredictionsPage() {
               <a
                 href="#"
                 title="Download JSON"
-                className="flex items-center gap-2 rounded-md border border-neutral-300 bg-neutral-0 px-4 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700"
+                className="bg-neutral-0 flex items-center gap-2 rounded-md border border-neutral-300 px-4 py-2 text-sm text-neutral-900 transition-colors hover:border-neutral-400 hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -134,29 +139,31 @@ export default function PredictionsPage() {
                   id="search"
                   placeholder="Search passages"
                   title="Basic search is case-insensitive. Use /pattern/i for case-insensitive regex, or /pattern/ for case-sensitive regex"
-                  className="h-12 w-full rounded-md border border-neutral-300 bg-neutral-0 py-2 pr-11 pl-4 text-sm text-neutral-900 shadow-sm transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 focus:outline-none dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:hover:border-neutral-500 dark:focus:border-neutral-400 dark:focus:ring-neutral-400"
+                  className="bg-neutral-0 h-12 w-full rounded-md border border-neutral-300 py-2 pr-11 pl-4 text-sm text-neutral-900 shadow-sm transition-colors placeholder:text-neutral-500 hover:border-neutral-400 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 focus:outline-none dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder:text-neutral-400 dark:hover:border-neutral-500 dark:focus:border-neutral-400 dark:focus:ring-neutral-400"
                 />
-                <div className="absolute left-0 z-10 mt-1 hidden w-80 rounded-lg border border-neutral-200 bg-neutral-0 p-4 shadow-lg group-hover:block dark:border-neutral-700 dark:bg-neutral-800">
+                <div className="bg-neutral-0 absolute left-0 z-10 mt-1 hidden w-80 rounded-lg border border-neutral-200 p-4 shadow-lg group-hover:block dark:border-neutral-700 dark:bg-neutral-800">
                   <h3 className="mb-2 font-semibold text-neutral-900 dark:text-neutral-100">
                     Search Examples:
                   </h3>
                   <table className="w-full text-sm">
                     <tbody>
-                      <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors">
+                      <tr className="transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700">
                         <td className="py-1 pr-4">climate</td>
                         <td className="text-neutral-600 dark:text-neutral-400">
                           Find passages containing &quot;climate&quot;
                         </td>
                       </tr>
-                      <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors">
+                      <tr className="transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700">
                         <td className="py-1 pr-4">/pattern/i</td>
                         <td className="text-neutral-600 dark:text-neutral-400">
                           Case-insensitive regex
                         </td>
                       </tr>
-                      <tr className="hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors">
+                      <tr className="transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700">
                         <td className="py-1 pr-4">/pattern/</td>
-                        <td className="text-neutral-600 dark:text-neutral-400">Case-sensitive regex</td>
+                        <td className="text-neutral-600 dark:text-neutral-400">
+                          Case-sensitive regex
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -170,7 +177,7 @@ export default function PredictionsPage() {
                 <select
                   value={pageSize}
                   onChange={(e) => setPageSize(parseInt(e.target.value, 10))}
-                  className="w-full rounded-md border border-neutral-300 bg-neutral-0 px-3 py-2 text-neutral-900 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-400 lg:w-auto"
+                  className="bg-neutral-0 w-full rounded-md border border-neutral-300 px-3 py-2 text-neutral-900 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 lg:w-auto dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-400"
                 >
                   <option value={10}>10 per page</option>
                   <option value={25}>25 per page</option>
@@ -180,23 +187,23 @@ export default function PredictionsPage() {
                 <button
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={!hasPreviousPage}
-                  className={`w-full px-3 py-2 lg:w-auto rounded-md border transition-colors ${
+                  className={`w-full rounded-md border px-3 py-2 transition-colors lg:w-auto ${
                     hasPreviousPage
-                      ? "border-neutral-300 bg-neutral-0 text-neutral-900 hover:border-neutral-400 hover:bg-neutral-50 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-400"
+                      ? "bg-neutral-0 border-neutral-300 text-neutral-900 hover:border-neutral-400 hover:bg-neutral-50 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-400"
                       : "cursor-not-allowed border-neutral-300 bg-neutral-100 text-neutral-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-400"
                   }`}
                 >
                   Previous
                 </button>
-                <span className="text-sm text-neutral-600 dark:text-neutral-400 lg:mx-2">
+                <span className="text-sm text-neutral-600 lg:mx-2 dark:text-neutral-400">
                   Page {page}
                 </span>
                 <button
                   onClick={() => setPage(page + 1)}
                   disabled={!hasNextPage}
-                  className={`w-full px-3 py-2 lg:w-auto rounded-md border transition-colors ${
+                  className={`w-full rounded-md border px-3 py-2 transition-colors lg:w-auto ${
                     hasNextPage
-                      ? "border-neutral-300 bg-neutral-0 text-neutral-900 hover:border-neutral-400 hover:bg-neutral-50 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-400"
+                      ? "bg-neutral-0 border-neutral-300 text-neutral-900 hover:border-neutral-400 hover:bg-neutral-50 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-400"
                       : "cursor-not-allowed border-neutral-300 bg-neutral-100 text-neutral-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-400"
                   }`}
                 >
@@ -206,13 +213,13 @@ export default function PredictionsPage() {
               <div className="flex gap-2">
                 <button
                   id="shuffle"
-                  className="w-full rounded-md border border-neutral-300 bg-neutral-0 px-3 py-2 text-neutral-900 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-400 lg:w-auto"
+                  className="bg-neutral-0 w-full rounded-md border border-neutral-300 px-3 py-2 text-neutral-900 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 lg:w-auto dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-400"
                 >
                   Shuffle Passages
                 </button>
                 <button
                   id="sortLength"
-                  className="w-full rounded-md border border-neutral-300 bg-neutral-0 px-3 py-2 text-neutral-900 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-400 lg:w-auto"
+                  className="bg-neutral-0 w-full rounded-md border border-neutral-300 px-3 py-2 text-neutral-900 transition-colors hover:border-neutral-400 hover:bg-neutral-50 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 lg:w-auto dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-400"
                 >
                   Sort by Length (↓)
                 </button>
@@ -223,8 +230,11 @@ export default function PredictionsPage() {
 
         {/* Count display */}
         <div className="mb-4 text-sm font-medium text-neutral-700 dark:text-neutral-300">
-          Showing <span id="visible-count" className="font-mono">{predictions.length}</span> of{" "}
-          <span className="font-mono">{predictions.length}</span> passages
+          Showing{" "}
+          <span id="visible-count" className="font-mono">
+            {predictions.length}
+          </span>{" "}
+          of <span className="font-mono">{predictions.length}</span> passages
         </div>
 
         {loading && (
@@ -251,12 +261,12 @@ export default function PredictionsPage() {
               return (
                 <div
                   key={index}
-                  className="passage-card rounded-lg border border-neutral-200 bg-neutral-0 p-6 shadow-sm transition duration-300 hover:shadow-md dark:border-neutral-700 dark:bg-neutral-800"
+                  className="passage-card bg-neutral-0 rounded-lg border border-neutral-200 p-6 shadow-sm transition duration-300 hover:shadow-md dark:border-neutral-700 dark:bg-neutral-800"
                 >
                   <div className="mb-2 text-sm text-neutral-600 dark:text-neutral-400">
                     Passage {index + 1} | No metadata available
                   </div>
-                  <div className="passage-text text-neutral-900 dark:text-neutral-100 leading-relaxed">
+                  <div className="passage-text leading-relaxed text-neutral-900 dark:text-neutral-100">
                     {prediction.text}
                   </div>
                 </div>

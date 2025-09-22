@@ -29,7 +29,7 @@ export default function ConceptPage() {
         setError(
           `Failed to fetch classifiers: ${
             err instanceof Error ? err.message : "Unknown error"
-          }`
+          }`,
         );
       } finally {
         setLoading(false);
@@ -42,10 +42,10 @@ export default function ConceptPage() {
   }, [conceptId]);
 
   return (
-    <div className="min-h-screen p-6 bg-neutral-0 dark:bg-neutral-900">
-      <div className="max-w-7xl mx-auto">
+    <div className="bg-neutral-0 min-h-screen p-6 dark:bg-neutral-900">
+      <div className="mx-auto max-w-7xl">
         {/* Header section */}
-        <div className="bg-neutral-0 dark:bg-neutral-800 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700 p-6 mb-6">
+        <div className="bg-neutral-0 mb-6 rounded-lg border border-neutral-200 p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
           <div className="flex flex-col gap-2">
             <h1 className="font-serif text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
               {conceptId}
@@ -54,7 +54,7 @@ export default function ConceptPage() {
               <a
                 href="#"
                 target="_blank"
-                className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+                className="text-sm text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
               >
                 View in Wikibase →
               </a>
@@ -64,7 +64,7 @@ export default function ConceptPage() {
 
         {loading && (
           <div className="py-12 text-center">
-            <div className="inline-block w-6 h-6 border-2 border-neutral-300 border-t-neutral-900 dark:border-neutral-600 dark:border-t-neutral-100 rounded-full animate-spin"></div>
+            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900 dark:border-neutral-600 dark:border-t-neutral-100"></div>
             <p className="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
               Loading classifiers...
             </p>
@@ -72,7 +72,7 @@ export default function ConceptPage() {
         )}
 
         {error && (
-          <div className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg p-4 mb-6">
+          <div className="mb-6 rounded-lg border border-neutral-300 bg-neutral-100 p-4 dark:border-neutral-700 dark:bg-neutral-800">
             <div className="text-neutral-900 dark:text-neutral-100">
               <strong className="font-medium">Error:</strong> {error}
             </div>
@@ -80,8 +80,8 @@ export default function ConceptPage() {
         )}
 
         {!loading && !error && classifiers.length > 0 && (
-          <div className="bg-neutral-0 dark:bg-neutral-800 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700">
-            <div className="p-6 border-b border-neutral-200 dark:border-neutral-700">
+          <div className="bg-neutral-0 rounded-lg border border-neutral-200 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+            <div className="border-b border-neutral-200 p-6 dark:border-neutral-700">
               <h2 className="font-serif text-lg font-medium text-neutral-900 dark:text-neutral-100">
                 Available Classifiers
               </h2>
@@ -92,10 +92,10 @@ export default function ConceptPage() {
                 <Link
                   key={classifierId}
                   href={`/${conceptId}/${classifierId}`}
-                  className="block p-6 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
+                  className="block p-6 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-neutral-900 dark:text-neutral-100 font-medium">
+                    <span className="font-medium text-neutral-900 dark:text-neutral-100">
                       {classifierId}
                     </span>
                     <svg
@@ -118,9 +118,14 @@ export default function ConceptPage() {
         )}
 
         {!loading && !error && classifiers.length === 0 && (
-          <div className="bg-neutral-0 dark:bg-neutral-800 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700 p-12 text-center">
+          <div className="bg-neutral-0 rounded-lg border border-neutral-200 p-12 text-center shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
             <div className="text-neutral-600 dark:text-neutral-400">
-              <p>No classifiers found for concept <span className="font-medium text-neutral-900 dark:text-neutral-100">{conceptId}</span></p>
+              <p>
+                No classifiers found for concept{" "}
+                <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                  {conceptId}
+                </span>
+              </p>
             </div>
           </div>
         )}
@@ -129,10 +134,20 @@ export default function ConceptPage() {
         <div className="mt-6">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-neutral-600 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
             </svg>
             Back to all concepts
           </Link>

@@ -5,7 +5,10 @@ interface ErrorMessageProps {
   className?: string;
 }
 
-export default function ErrorMessage({ error, className = "mb-6" }: ErrorMessageProps) {
+export default function ErrorMessage({
+  error,
+  className = "mb-6",
+}: ErrorMessageProps) {
   return (
     <Card variant="error" className={`p-4 ${className}`}>
       <div className="text-neutral-900 dark:text-neutral-100">

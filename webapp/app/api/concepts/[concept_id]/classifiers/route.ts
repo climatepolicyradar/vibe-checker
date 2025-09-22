@@ -9,7 +9,7 @@ import { fromIni } from "@aws-sdk/credential-providers";
 
 export async function GET(
   request: Request,
-  { params }: { params: { concept_id: string } }
+  { params }: { params: { concept_id: string } },
 ) {
   try {
     const s3Client = new S3Client({
@@ -49,7 +49,7 @@ export async function GET(
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

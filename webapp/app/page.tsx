@@ -67,7 +67,7 @@ export default function Home() {
   }, [searchTerm, concepts]);
 
   return (
-    <div className="min-h-screen p-6 bg-neutral-0 dark:bg-neutral-900">
+    <div className="bg-neutral-0 min-h-screen p-6 dark:bg-neutral-900">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex w-full items-center justify-between">
           <div>
@@ -78,7 +78,7 @@ export default function Home() {
               Check predictions from candidate classifiers
             </p>
           </div>
-          <div className="w-full max-w-sm min-w-[200px] ml-auto">
+          <div className="ml-auto w-full max-w-sm min-w-[200px]">
             <Input
               type="text"
               value={searchTerm}
@@ -115,13 +115,13 @@ export default function Home() {
             <table className="w-full table-auto text-left">
               <thead>
                 <tr>
-                  <th className="bg-neutral-50 dark:bg-neutral-700 border-b border-neutral-200 dark:border-neutral-600 w-48 p-4">
-                    <p className="text-neutral-600 dark:text-neutral-300 text-sm font-medium">
+                  <th className="w-48 border-b border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-600 dark:bg-neutral-700">
+                    <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
                       Concept
                     </p>
                   </th>
-                  <th className="bg-neutral-50 dark:bg-neutral-700 border-b border-neutral-200 dark:border-neutral-600 p-4">
-                    <p className="text-neutral-600 dark:text-neutral-300 text-sm font-medium">
+                  <th className="border-b border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-600 dark:bg-neutral-700">
+                    <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
                       Description
                     </p>
                   </th>
@@ -131,14 +131,16 @@ export default function Home() {
                 {filteredConcepts.map((concept) => (
                   <tr
                     key={concept.id}
-                    className="hover:bg-neutral-50 dark:hover:bg-neutral-700 cursor-pointer transition-colors"
+                    className="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700"
                     onClick={() => (window.location.href = `/${concept.id}`)}
                   >
-                    <td className="border-b border-neutral-200 dark:border-neutral-600 p-4">
-                      <p className="text-neutral-900 dark:text-neutral-100 break-words font-medium">{concept.name}</p>
+                    <td className="border-b border-neutral-200 p-4 dark:border-neutral-600">
+                      <p className="font-medium break-words text-neutral-900 dark:text-neutral-100">
+                        {concept.name}
+                      </p>
                     </td>
-                    <td className="border-b border-neutral-200 dark:border-neutral-600 p-4">
-                      <p className="text-neutral-600 dark:text-neutral-400 break-words text-sm">
+                    <td className="border-b border-neutral-200 p-4 dark:border-neutral-600">
+                      <p className="text-sm break-words text-neutral-600 dark:text-neutral-400">
                         {concept.description}
                       </p>
                     </td>
@@ -149,7 +151,8 @@ export default function Home() {
             {filteredConcepts.length === 0 && concepts.length > 0 && (
               <div className="p-12 text-center">
                 <p className="text-neutral-600 dark:text-neutral-400">
-                  No concepts found matching &quot;<span className="font-medium">{searchTerm}</span>&quot;
+                  No concepts found matching &quot;
+                  <span className="font-medium">{searchTerm}</span>&quot;
                 </p>
               </div>
             )}

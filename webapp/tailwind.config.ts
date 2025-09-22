@@ -10,9 +10,19 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-dm-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+        sans: [
+          "var(--font-dm-mono)",
+          "ui-monospace",
+          "SFMono-Regular",
+          "monospace",
+        ],
         serif: ["var(--font-fraunces)", "ui-serif", "Georgia", "serif"],
-        mono: ["var(--font-dm-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+        mono: [
+          "var(--font-dm-mono)",
+          "ui-monospace",
+          "SFMono-Regular",
+          "monospace",
+        ],
       },
       colors: {
         // Monochrome palette with semantic naming
