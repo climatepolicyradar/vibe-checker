@@ -1,0 +1,98 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* CSS Variables for theme colors */
+:root {
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #fafafa;
+  --color-bg-tertiary: #f5f5f5;
+  --color-text-primary: #171717;
+  --color-text-secondary: #525252;
+  --color-text-tertiary: #737373;
+  --color-border-primary: #e5e5e5;
+  --color-border-secondary: #d4d4d4;
+}
+
+.dark {
+  --color-bg-primary: #171717;
+  --color-bg-secondary: #262626;
+  --color-bg-tertiary: #404040;
+  --color-text-primary: #f5f5f5;
+  --color-text-secondary: #a3a3a3;
+  --color-text-tertiary: #737373;
+  --color-border-primary: #404040;
+  --color-border-secondary: #525252;
+}
+
+/* Typography hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-fraunces);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+/* Base body uses DM Mono for that technical feel */
+body {
+  font-family: var(--font-dm-mono);
+  font-weight: 400;
+}
+
+/* Smooth theme transitions */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--color-text-primary);
+  outline-offset: 2px;
+}
+
+/* Common layout utilities */
+.page-container {
+  @apply min-h-screen p-6 bg-white dark:bg-neutral-900;
+}
+
+.content-container {
+  @apply mx-auto max-w-7xl;
+}
+
+.page-header {
+  @apply mb-8 flex w-full items-center justify-between;
+}
+
+.page-title {
+  @apply font-serif text-2xl font-semibold text-neutral-900 dark:text-neutral-100;
+}
+
+.page-subtitle {
+  @apply mt-1 text-sm text-neutral-600 dark:text-neutral-400;
+}
+
+/* Table utilities */
+.table-header {
+  @apply bg-neutral-50 dark:bg-neutral-700 border-b border-neutral-200 dark:border-neutral-600;
+}
+
+.table-cell {
+  @apply border-b border-neutral-200 dark:border-neutral-600 p-4;
+}
+
+.table-row-hover {
+  @apply hover:bg-neutral-50 dark:hover:bg-neutral-700 cursor-pointer transition-colors;
+}
+
+/* Text utilities for consistent hierarchy */
+.text-primary {
+  @apply text-neutral-900 dark:text-neutral-100;
+}
+
+.text-secondary {
+  @apply text-neutral-600 dark:text-neutral-400;
+}
+
+.text-muted {
+  @apply text-neutral-500 dark:text-neutral-500;
+}

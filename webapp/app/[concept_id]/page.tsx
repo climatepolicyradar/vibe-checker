@@ -42,69 +42,102 @@ export default function ConceptPage() {
   }, [conceptId]);
 
   return (
-    <div style={{ padding: "20px", fontFamily: "monospace" }}>
-      <div style={{ marginBottom: "20px" }}>
-        <Link
-          href="/"
-          style={{
-            color: "#666",
-            textDecoration: "none",
-            fontSize: "14px",
-          }}
-        >
-          ← Back to all concepts
-        </Link>
-      </div>
-
-      <h1>Concept: {conceptId}</h1>
-      <p>Select a classifier to view predictions:</p>
-
-      {loading && <p>Loading classifiers...</p>}
-
-      {error && (
-        <div style={{ color: "red", marginBottom: "20px" }}>
-          <strong>Error:</strong> {error}
+    <div className="min-h-screen p-6 bg-neutral-0 dark:bg-neutral-900">
+      <div className="max-w-7xl mx-auto">
+        {/* Header section */}
+        <div className="bg-neutral-0 dark:bg-neutral-800 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700 p-6 mb-6">
+          <div className="flex flex-col gap-2">
+            <h1 className="font-serif text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+              {conceptId}
+            </h1>
+            <div>
+              <a
+                href="#"
+                target="_blank"
+                className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+              >
+                View in Wikibase →
+              </a>
+            </div>
+          </div>
         </div>
-      )}
 
-      {!loading && !error && classifiers.length > 0 && (
-        <div>
-          <h2>Available Classifiers:</h2>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {classifiers.map((classifierId) => (
-              <li key={classifierId} style={{ marginBottom: "10px" }}>
+        {loading && (
+          <div className="py-12 text-center">
+            <div className="inline-block w-6 h-6 border-2 border-neutral-300 border-t-neutral-900 dark:border-neutral-600 dark:border-t-neutral-100 rounded-full animate-spin"></div>
+            <p className="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
+              Loading classifiers...
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg p-4 mb-6">
+            <div className="text-neutral-900 dark:text-neutral-100">
+              <strong className="font-medium">Error:</strong> {error}
+            </div>
+          </div>
+        )}
+
+        {!loading && !error && classifiers.length > 0 && (
+          <div className="bg-neutral-0 dark:bg-neutral-800 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700">
+            <div className="p-6 border-b border-neutral-200 dark:border-neutral-700">
+              <h2 className="font-serif text-lg font-medium text-neutral-900 dark:text-neutral-100">
+                Available Classifiers
+              </h2>
+            </div>
+
+            <div className="divide-y divide-neutral-200 dark:divide-neutral-700">
+              {classifiers.map((classifierId) => (
                 <Link
+                  key={classifierId}
                   href={`/${conceptId}/${classifierId}`}
-                  style={{
-                    display: "inline-block",
-                    padding: "10px 15px",
-                    backgroundColor: "#f0f0f0",
-                    border: "1px solid #ccc",
-                    borderRadius: "5px",
-                    textDecoration: "none",
-                    color: "#333",
-                    transition: "background-color 0.2s",
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = "#e0e0e0";
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f0f0f0";
-                  }}
+                  className="block p-6 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors"
                 >
-                  {classifierId}
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-900 dark:text-neutral-100 font-medium">
+                      {classifierId}
+                    </span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5 text-neutral-500 dark:text-neutral-400"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
                 </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+              ))}
+            </div>
+          </div>
+        )}
 
-      {!loading && !error && classifiers.length === 0 && (
-        <div style={{ color: "#666" }}>
-          <p>No classifiers found for concept {conceptId}</p>
+        {!loading && !error && classifiers.length === 0 && (
+          <div className="bg-neutral-0 dark:bg-neutral-800 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700 p-12 text-center">
+            <div className="text-neutral-600 dark:text-neutral-400">
+              <p>No classifiers found for concept <span className="font-medium text-neutral-900 dark:text-neutral-100">{conceptId}</span></p>
+            </div>
+          </div>
+        )}
+
+        {/* Back to index link */}
+        <div className="mt-6">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to all concepts
+          </Link>
         </div>
-      )}
+      </div>
     </div>
   );
 }
