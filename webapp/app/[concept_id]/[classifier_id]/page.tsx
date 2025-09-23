@@ -75,7 +75,6 @@ export default function PredictionsPage() {
   return (
     <div className="bg-neutral-0 min-h-screen p-6 dark:bg-neutral-900">
       <div className="mx-auto max-w-7xl">
-        {/* Controls section including header */}
         <div className="bg-neutral-0 mb-6 rounded-lg border border-neutral-200 p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
           <div className="flex flex-col gap-4">
             <div>
