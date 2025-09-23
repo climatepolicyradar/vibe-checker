@@ -238,7 +238,7 @@ export default function PredictionsPage() {
 
         {loading && (
           <div className="py-8 text-center">
-            <p className="text-slate-600 dark:text-slate-400">
+            <p className="text-neutral-600 dark:text-neutral-400">
               Loading predictions...
             </p>
           </div>
