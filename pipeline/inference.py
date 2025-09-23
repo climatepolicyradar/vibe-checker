@@ -13,7 +13,6 @@ from knowledge_graph.classifier import ClassifierFactory
 from knowledge_graph.identifiers import WikibaseID
 from knowledge_graph.labelled_passage import LabelledPassage
 from knowledge_graph.wikibase import WikibaseSession
-from more_itertools import chunked_even
 from mypy_boto3_s3 import S3Client
 from prefect import flow, task
 from prefect.artifacts import create_progress_artifact, update_progress_artifact
@@ -61,9 +60,9 @@ def get_object_bytes_from_s3(s3_client: S3Client, key: str) -> bytes:
     return s3_client.get_object(Bucket=BUCKET_NAME, Key=key)["Body"].read()
 
 
-def push_object_bytes_to_s3(s3_client: S3Client, key: str | Path, bytes: bytes) -> None:
+def push_object_bytes_to_s3(s3_client: S3Client, key: str | Path, data: bytes) -> None:
     """Push bytes to S3 object."""
-    s3_client.put_object(Bucket=BUCKET_NAME, Key=str(key), Body=bytes)
+    s3_client.put_object(Bucket=BUCKET_NAME, Key=str(key), Body=data)
 
 
 @task(retries=3, retry_delay_seconds=5)
@@ -79,11 +78,68 @@ def load_passages_dataset(
             raise ValueError("The dataset is empty")
     except Exception as e:
         raise ValueError("Failed to load dataset") from e
+
+    # keep only the useful columns
+    dataset = dataset[
+        [
+            "text_block.text",
+            "text_block.text_block_id",
+            # "text_block.language",
+            # "text_block.type",
+            # "text_block.type_confidence",
+            "text_block.page_number",
+            # "text_block.coords",
+            "document_id",
+            # "document_name",
+            # "document_source_url",
+            # "document_content_type",
+            # "document_md5_sum",
+            # "languages",
+            "translated",
+            # "has_valid_text",
+            # "pipeline_metadata",
+            # "document_metadata.name",
+            # "document_metadata.document_title",
+            # "document_metadata.description",
+            # "document_metadata.import_id",
+            # "document_metadata.slug",
+            # "document_metadata.family_import_id",
+            # "document_metadata.family_slug",
+            "document_metadata.publication_ts",
+            # "document_metadata.date",
+            # "document_metadata.source_url",
+            # "document_metadata.download_url",
+            # "document_metadata.corpus_import_id",
+            "document_metadata.corpus_type_name",
+            # "document_metadata.collection_title",
+            # "document_metadata.collection_summary",
+            # "document_metadata.type",
+            # "document_metadata.source",
+            # "document_metadata.category",
+            # "document_metadata.geography",
+            # "document_metadata.geographies",
+            # "document_metadata.languages",
+            # "document_metadata.metadata",
+            # "document_description",
+            # "document_cdn_object",
+            "document_slug",
+            # "pdf_data.md5sum",
+            # "pdf_data_page_metadata.dimensions",
+            # "pdf_data_page_metadata.page_number",
+            # "_html_data.detected_title",
+            # "_html_data.detected_date",
+            # "_html_data.has_valid_text",
+            # "pipeline_metadata.parser_metadata",
+            # "text_block.index",
+            "world_bank_region",
+        ]
+    ]
+    assert isinstance(dataset, pd.DataFrame)
     return dataset
 
 
 @task(retries=3, retry_delay_seconds=5)
-def load_config(config_file_name: str = "concepts.yml") -> list[WikibaseID]:
+def load_wikibase_ids(config_file_name: str = "concepts.yml") -> list[WikibaseID]:
     """Load concept IDs from the configuration file."""
     s3_client = get_s3_client()
     bytes_from_s3 = get_object_bytes_from_s3(s3_client, config_file_name)
@@ -124,7 +180,7 @@ def load_embeddings_metadata(
 @task(retries=2, retry_delay_seconds=10)
 def process_single_concept(
     wikibase_id: WikibaseID,
-    passages: list[str],
+    passages_dataset: pd.DataFrame,
     passages_embeddings: np.ndarray,
     passages_embeddings_metadata: dict,
 ) -> dict:
@@ -152,31 +208,38 @@ def process_single_concept(
         concept_embedding = embedding_model.encode(concept.to_markdown())
 
         # Batch compute similarities using pre-computed embeddings
+        passages = passages_dataset["text_block.text"].tolist()
         logger.info(f"Computing similarities for {len(passages)} passages...")
+
+        # Ensure embeddings and concept embedding have compatible dimensions
+        if len(passages_embeddings) != len(passages_dataset):
+            raise ValueError(
+                f"Mismatch between embeddings ({len(passages_embeddings)}) "
+                f"and dataset ({len(passages_dataset)}) lengths"
+            )
+
         similarities = passages_embeddings @ concept_embedding  # Shape: (n_passages,)
 
         similarity_threshold = 0.65
         min_passages = 10_000
         max_passages = 100_000
 
-        # Get indices and similarities for all passages
-        passage_indices = list(range(len(passages)))
-        passage_similarities = list(zip(passage_indices, similarities, passages))
+        # Create a copy of the dataset to avoid modifying the shared DataFrame
+        passages_with_similarity = passages_dataset.copy()
+        passages_with_similarity["similarity"] = similarities
 
         # Sort by similarity (highest first)
-        passage_similarities.sort(key=lambda x: x[1], reverse=True)
+        passages_with_similarity = passages_with_similarity.sort_values(
+            "similarity", ascending=False
+        )
 
         # Separate the passages which are above and below the threshold similarity to
         # our concept embedding.
-        above_threshold = [
-            (idx, sim, text)
-            for idx, sim, text in passage_similarities
-            if sim > similarity_threshold
+        above_threshold = passages_with_similarity[
+            passages_with_similarity["similarity"] > similarity_threshold
         ]
-        below_threshold = [
-            (idx, sim, text)
-            for idx, sim, text in passage_similarities
-            if sim <= similarity_threshold
+        below_threshold = passages_with_similarity[
+            passages_with_similarity["similarity"] <= similarity_threshold
         ]
 
         logger.info(
@@ -189,58 +252,61 @@ def process_single_concept(
         # 2. If we don't have enough above threshold, take everything which is above
         #    the threshold, and then supplement the list with the passages which are
         #    closest to the threshold to reach min_passages.
-        selected_passages = []
         if len(above_threshold) >= min_passages:
             selected_passages = above_threshold
         else:
-            selected_passages = above_threshold.copy()
             # Sort below_threshold by distance from threshold (closest first)
-            below_threshold.sort(key=lambda x: abs(x[1] - similarity_threshold))
-            remaining_needed = min_passages - len(selected_passages)
-            selected_passages.extend(below_threshold[:remaining_needed])
+            below_threshold = (
+                below_threshold.assign(
+                    distance_from_threshold=abs(
+                        below_threshold["similarity"] - similarity_threshold
+                    )
+                )
+                .sort_values("distance_from_threshold")
+                .drop(columns=["distance_from_threshold"])
+            )
+            remaining_needed = min_passages - len(above_threshold)
+            selected_passages = pd.concat(
+                [above_threshold, below_threshold.head(remaining_needed)]
+            )
 
         # Ensure we don't exceed max_passages in either scenario
-        selected_passages = selected_passages[:max_passages]
+        selected_passages = selected_passages.head(max_passages)
 
-        # Sort selected passages back to original order for consistent processing
-        selected_passages.sort(key=lambda x: x[0])
-        passages_to_predict_on = [text for _, _, text in selected_passages]
+        # Reset index to get sequential integers for progress tracking
+        selected_passages = selected_passages.reset_index(drop=True)
 
-        logger.info(f"Selected {len(passages_to_predict_on)} passages")
-        logger.info(
-            f"Similarity range: {min(s[1] for s in selected_passages):.3f} - {max(s[1] for s in selected_passages):.3f}"
-        )
-
-        if above_threshold:
-            above_in_selection = sum(
-                1 for s in selected_passages if s[1] > similarity_threshold
-            )
-            logger.info(
-                f"Above threshold in selection: {above_in_selection}/{len(selected_passages)} ({above_in_selection / len(selected_passages) * 100:.1f}%)"
-            )
+        logger.info(f"Selected {len(selected_passages)} passages")
+        max_similarity = max(selected_passages["similarity"])
+        min_similarity = min(selected_passages["similarity"])
+        logger.info(f"Similarity range: {min_similarity:.3f}-{max_similarity:.3f}")
 
         classifier = ClassifierFactory.create(concept)
         logger.info(f"Created a {classifier}")
 
         # Run inference for the concept
         logger.info(f"Running inference for {classifier} in batches of {BATCH_SIZE}")
-        # Calculate total batches without consuming iterator
-        n_batches = (len(passages) + BATCH_SIZE - 1) // BATCH_SIZE
+        # Calculate total passages for progress tracking
+        n_passages = len(selected_passages)
 
         labelled_passages: list[LabelledPassage] = []
-        for i, batch in enumerate(chunked_even(passages_to_predict_on, BATCH_SIZE)):
-            predictions = classifier.predict_batch(batch)
-            for text, predicted_spans in zip(batch, predictions):
-                labelled_passage = LabelledPassage(text=text, spans=predicted_spans)
-                labelled_passages.append(labelled_passage)
+        assert isinstance(selected_passages, pd.DataFrame)
+        for idx, (_, row) in enumerate(selected_passages.iterrows()):
+            text = str(row["text_block.text"])
+            predicted_spans = classifier.predict(text)
+            labelled_passage = LabelledPassage(
+                text=text, spans=predicted_spans, metadata=row.to_dict()
+            )
+            labelled_passages.append(labelled_passage)
 
-            # Update progress every 50 batches (or on the last batch)
-            if (i + 1) % 50 == 0 or (i + 1) == n_batches:
-                progress = ((i + 1) / n_batches) * 100
+            # Update progress every 50 passages (or on the last passage)
+            passage_num = idx + 1
+            if passage_num % 50 == 0 or passage_num == n_passages:
+                progress = (passage_num / n_passages) * 100
                 update_progress_artifact(
                     progress_id,  # type: ignore
                     progress=progress,
-                    description=f"Processed batch {i + 1}/{n_batches}",
+                    description=f"Processed passage {passage_num}/{n_passages}",
                 )
 
         logger.info(f"Generated {len(labelled_passages)} labelled passages")
@@ -251,7 +317,14 @@ def process_single_concept(
         # Push results for this concept to S3
         jsonl_string = "\n".join(
             [
-                labelled_passage.model_dump_json()
+                json.dumps(
+                    {
+                        "marked_up_text": labelled_passage.get_highlighted_text(
+                            start_pattern="<span>", end_pattern="</span>"
+                        ),
+                        **labelled_passage.model_dump(),
+                    }
+                )
                 for labelled_passage in labelled_passages
             ]
         )
@@ -259,14 +332,14 @@ def process_single_concept(
         push_object_bytes_to_s3(
             s3_client=s3_client,
             key=output_prefix / "predictions.jsonl",
-            bytes=jsonl_string.encode("utf-8"),
+            data=jsonl_string.encode("utf-8"),
         )
 
         # Push concept data to S3
         push_object_bytes_to_s3(
             s3_client=s3_client,
             key=output_prefix / "concept.json",
-            bytes=concept.model_dump_json().encode("utf-8"),
+            data=concept.model_dump_json().encode("utf-8"),
         )
 
         # Push classifier metadata to S3
@@ -279,7 +352,7 @@ def process_single_concept(
         push_object_bytes_to_s3(
             s3_client=s3_client,
             key=output_prefix / "classifier.json",
-            bytes=json.dumps(classifier_data).encode("utf-8"),
+            data=json.dumps(classifier_data).encode("utf-8"),
         )
 
         # Calculate statistics about the results and push them to S3
@@ -297,7 +370,7 @@ def process_single_concept(
         push_object_bytes_to_s3(
             s3_client=s3_client,
             key=output_prefix / "stats.json",
-            bytes=json.dumps(stats).encode("utf-8"),
+            data=json.dumps(stats).encode("utf-8"),
         )
 
         result = {
@@ -328,7 +401,7 @@ def process_single_concept(
             "concept_id": wikibase_id,
             "status": "failed",
             "error": str(e),
-            "total_passages": len(passages),
+            "total_passages": len(passages_dataset),
             "positive_passages": 0,
             "percentage": 0.0,
         }
@@ -336,7 +409,7 @@ def process_single_concept(
 
 @flow(  # pyright: ignore[reportCallIssue]
     timeout_seconds=None,
-    task_runner=ThreadPoolTaskRunner(max_workers=3),  # pyright: ignore[reportArgumentType]
+    task_runner=ThreadPoolTaskRunner(max_workers=10),  # pyright: ignore[reportArgumentType]
 )
 def vibe_checker_inference():
     """
@@ -379,11 +452,11 @@ def vibe_checker_inference():
     """
     # Load shared data
     logger.info("Loading dataset...")
-    dataset = load_passages_dataset()
-    logger.info(f"Loaded {len(dataset)} passages from the dataset")
+    passages_dataset = load_passages_dataset()
+    logger.info(f"Loaded {len(passages_dataset)} passages from the dataset")
 
     logger.info("Loading wikibase IDs...")
-    wikibase_ids = load_config()
+    wikibase_ids = load_wikibase_ids()
     logger.info(f"Loaded {len(wikibase_ids)} wikibase IDs from the config")
 
     logger.info("Loading embeddings...")
@@ -394,24 +467,14 @@ def vibe_checker_inference():
     passages_embeddings_metadata = load_embeddings_metadata()
     logger.info("Loaded embeddings generation metadata")
 
-    passages = dataset["text_block.text"].tolist()
-
-    # Create overall progress artifact
-    n_concepts = len(wikibase_ids)
-    overall_progress_id = create_progress_artifact(
-        progress=0.0,
-        key="overall-inference",
-        description=f"Processing {n_concepts} concepts",
-    )
-
     # Submit a separate inference task for each of the concepts, and then wait for
     # all of them to complete
-    logger.info(f"Starting parallel inference of {n_concepts} concepts...")
+    logger.info(f"Starting parallel inference of {len(wikibase_ids)} concepts...")
     concept_futures = []
     for wikibase_id in wikibase_ids:
         future = process_single_concept.submit(
             wikibase_id=wikibase_id,
-            passages=passages,
+            passages_dataset=passages_dataset,
             passages_embeddings=passages_embeddings,
             passages_embeddings_metadata=passages_embeddings_metadata,
         )
@@ -420,20 +483,12 @@ def vibe_checker_inference():
     logger.info("Waiting for all concept inference tasks to complete...")
     wait(concept_futures)
 
-    # Track completion progress and collect results
+    # Track completion and collect results
     collected_results = []
-    n_completed = 0
     for future in concept_futures:
         try:
             result = future.result()
             collected_results.append(result)
-            n_completed += 1
-            progress_percentage = (n_completed / n_concepts) * 100.0
-            update_progress_artifact(
-                overall_progress_id,  # type: ignore
-                progress=progress_percentage,
-                description=f"Completed {n_completed}/{n_concepts} concepts ({progress_percentage:.1f}%)",
-            )
         except (ValueError, RuntimeError) as e:
             logger.error(f"Unexpected error collecting result: {str(e)}")
             # This shouldn't happen with our error handling in process_single_concept
@@ -462,13 +517,6 @@ def vibe_checker_inference():
 
     logger.info(
         f"Successfully processed {len(successful_results)}/{len(collected_results)} concepts"
-    )
-
-    # Mark overall progress as complete
-    update_progress_artifact(
-        overall_progress_id,  # type: ignore
-        progress=100.0,
-        description=f"All concepts processed. {len(successful_results)} successful, {len(failed_results)} failed",
     )
 
     return collected_results
