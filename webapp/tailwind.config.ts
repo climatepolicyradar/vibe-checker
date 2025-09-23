@@ -41,6 +41,29 @@ const config: Config = {
           950: "#0a0a0a",
           1000: "#000000",
         },
+
+        // Semantic colors that automatically adapt to theme
+        bg: {
+          primary: "var(--color-bg-primary)",
+          secondary: "var(--color-bg-secondary)",
+          tertiary: "var(--color-bg-tertiary)",
+          inverse: "var(--color-bg-inverse)",
+        },
+        text: {
+          primary: "var(--color-text-primary)",
+          secondary: "var(--color-text-secondary)",
+          tertiary: "var(--color-text-tertiary)",
+          inverse: "var(--color-text-inverse)",
+        },
+        border: {
+          primary: "var(--color-border-primary)",
+          secondary: "var(--color-border-secondary)",
+          tertiary: "var(--color-border-tertiary)",
+        },
+        interactive: {
+          hover: "var(--color-interactive-hover)",
+          active: "var(--color-interactive-active)",
+        },
       },
     },
   },

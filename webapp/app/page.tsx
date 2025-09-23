@@ -81,10 +81,10 @@ export default function Home() {
         <div className="mb-8">
           <div className="mb-4 md:mb-0 md:flex md:items-center md:justify-between">
             <div>
-              <h1 className="font-serif text-2xl font-semibold text-neutral-900 dark:text-neutral-100">
+              <h1 className="page-title">
                 Vibe Checker
               </h1>
-              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+              <p className="page-subtitle">
                 Check predictions from candidate classifiers
               </p>
             </div>
@@ -103,7 +103,7 @@ export default function Home() {
                   viewBox="0 0 24 24"
                   strokeWidth="2"
                   stroke="currentColor"
-                  className="h-4 w-4 text-neutral-600 dark:text-neutral-400"
+                  className="h-4 w-4 text-secondary"
                 >
                   <path
                     strokeLinecap="round"

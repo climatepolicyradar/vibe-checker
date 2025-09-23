@@ -12,10 +12,8 @@ export default function Card({
   const baseClasses = "rounded-lg border shadow-sm";
 
   const variantClasses = {
-    default:
-      "border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-800",
-    error:
-      "border-neutral-300 bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800",
+    default: "border-border-primary bg-bg-primary",
+    error: "border-red-200 bg-red-50",
   };
 
   return (

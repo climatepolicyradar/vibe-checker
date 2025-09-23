@@ -5,7 +5,10 @@ import { DM_Mono, Fraunces } from "next/font/google";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Vibe Checker",
+  title: {
+    template: "%s | Vibe Checker",
+    default: "Vibe Checker",
+  },
   description: "Check the predictions from candidate classifiers",
 };
 
@@ -30,7 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${fraunces.variable} ${dmMono.variable}`}>
-      <body className="bg-neutral-0 text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
+      <body className="bg-bg-primary text-text-primary">
         <div className="min-h-screen">{children}</div>
       </body>
     </html>

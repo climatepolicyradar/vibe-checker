@@ -23,11 +23,11 @@ export default function Button({
 
   const variantClasses = {
     primary: disabled
-      ? "cursor-not-allowed border-neutral-300 bg-neutral-100 text-neutral-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-400"
-      : "border-neutral-900 bg-neutral-900 text-neutral-0 hover:bg-neutral-700 hover:border-neutral-700 dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200 dark:hover:border-neutral-200",
+      ? "cursor-not-allowed border-border-secondary bg-bg-tertiary text-text-tertiary opacity-50"
+      : "border-accent-primary bg-accent-primary text-text-inverse hover:bg-accent-secondary hover:border-accent-secondary",
     secondary: disabled
-      ? "cursor-not-allowed border-neutral-300 bg-neutral-100 text-neutral-500 dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-400"
-      : "border-neutral-300 bg-white text-neutral-900 hover:border-neutral-400 hover:bg-neutral-50 focus:border-neutral-500 focus:ring-1 focus:ring-neutral-500 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-700 dark:focus:border-neutral-400 dark:focus:ring-neutral-400",
+      ? "cursor-not-allowed border-border-secondary bg-bg-tertiary text-text-tertiary opacity-50"
+      : "border-border-secondary bg-bg-primary text-text-primary hover:border-border-tertiary hover:bg-interactive-hover focus:border-accent-primary focus:ring-1 focus:ring-accent-primary",
   };
 
   const widthClass = fullWidth ? "w-full" : "w-auto";

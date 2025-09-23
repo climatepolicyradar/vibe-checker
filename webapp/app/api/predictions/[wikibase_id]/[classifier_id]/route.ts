@@ -3,14 +3,41 @@ import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
 import { fromIni } from "@aws-sdk/credential-providers";
 
+interface FilterParams {
+  translated?: boolean;
+  corpus_type?: string;
+  world_bank_region?: string;
+  publication_year_start?: number;
+  publication_year_end?: number;
+  document_id?: string;
+  search?: string;
+}
+
 export async function GET(
   request: Request,
-  { params }: { params: { wikibase_id: string; classifier_id: string } },
+  { params }: { params: Promise<{ wikibase_id: string; classifier_id: string }> },
 ) {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const pageSize = parseInt(searchParams.get("pageSize") || "100");
+
+    // Parse filter parameters
+    const filters: FilterParams = {
+      translated: searchParams.get("translated")
+        ? searchParams.get("translated") === "true"
+        : undefined,
+      corpus_type: searchParams.get("corpus_type") || undefined,
+      world_bank_region: searchParams.get("world_bank_region") || undefined,
+      publication_year_start: searchParams.get("publication_year_start")
+        ? parseInt(searchParams.get("publication_year_start")!)
+        : undefined,
+      publication_year_end: searchParams.get("publication_year_end")
+        ? parseInt(searchParams.get("publication_year_end")!)
+        : undefined,
+      document_id: searchParams.get("document_id") || undefined,
+      search: searchParams.get("search") || undefined,
+    };
 
     // Validate pagination parameters
     if (page < 1 || pageSize < 1 || pageSize > 100) {
@@ -32,7 +59,7 @@ export async function GET(
     });
 
     const bucket = process.env.BUCKET_NAME;
-    const { wikibase_id, classifier_id } = params;
+    const { wikibase_id, classifier_id } = await params;
     const key = `${wikibase_id}/${classifier_id}/predictions.jsonl`;
     console.log("Key:", key);
     const command = new GetObjectCommand({ Bucket: bucket, Key: key });
@@ -45,16 +72,96 @@ export async function GET(
 
     const text = await body.transformToString();
 
-    // Parse JSONL data for pagination
+    // Parse JSONL data
     const lines = text.split("\n").filter((line) => line.trim() !== "");
-    const totalLines = lines.length;
-    const totalPages = Math.ceil(totalLines / pageSize);
+    const allPredictions = lines.map((line) => JSON.parse(line));
+
+    // Apply filters
+    const filteredPredictions = allPredictions.filter((prediction) => {
+      const metadata = prediction.metadata;
+
+      // Translation filter
+      if (filters.translated !== undefined) {
+        const isTranslated = metadata.translated === "True";
+        if (isTranslated !== filters.translated) return false;
+      }
+
+      // Corpus type filter
+      if (
+        filters.corpus_type &&
+        metadata["document_metadata.corpus_type_name"] !== filters.corpus_type
+      ) {
+        return false;
+      }
+
+      // World Bank region filter
+      if (
+        filters.world_bank_region &&
+        metadata.world_bank_region !== filters.world_bank_region
+      ) {
+        return false;
+      }
+
+      // Publication year filters
+      if (filters.publication_year_start || filters.publication_year_end) {
+        const pubDate = new Date(metadata["document_metadata.publication_ts"]);
+        const pubYear = pubDate.getFullYear();
+
+        if (
+          filters.publication_year_start &&
+          pubYear < filters.publication_year_start
+        ) {
+          return false;
+        }
+
+        if (
+          filters.publication_year_end &&
+          pubYear > filters.publication_year_end
+        ) {
+          return false;
+        }
+      }
+
+      // Document ID filter
+      if (
+        filters.document_id &&
+        !metadata.document_id
+          .toLowerCase()
+          .includes(filters.document_id.toLowerCase())
+      ) {
+        return false;
+      }
+
+      // Text search filter
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase();
+        const text = prediction.text.toLowerCase();
+        if (!text.includes(searchTerm)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Apply pagination to filtered results
+    const totalFiltered = filteredPredictions.length;
+    const totalPages = Math.ceil(totalFiltered / pageSize);
     const startIndex = (page - 1) * pageSize;
     const endIndex = startIndex + pageSize;
-    const paginatedLines = lines.slice(startIndex, endIndex);
-    const paginatedPassages = paginatedLines.map((line) => {
-      return JSON.parse(line);
-    });
+    const paginatedPassages = filteredPredictions.slice(startIndex, endIndex);
+
+    // Extract unique values for filter options
+    const uniqueCorpusTypes = [
+      ...new Set(
+        allPredictions.map(
+          (p) => p.metadata["document_metadata.corpus_type_name"],
+        ),
+      ),
+    ].sort();
+    const uniqueRegions = [
+      ...new Set(allPredictions.map((p) => p.metadata.world_bank_region)),
+    ].sort();
 
     return NextResponse.json({
       success: true,
@@ -63,10 +170,15 @@ export async function GET(
       pagination: {
         page,
         pageSize,
-        totalLines,
+        totalFiltered,
         totalPages,
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1,
+      },
+      filters: {
+        availableCorpusTypes: uniqueCorpusTypes,
+        availableRegions: uniqueRegions,
+        applied: filters,
       },
     });
   } catch (error) {

@@ -8,6 +8,22 @@ import { NextResponse } from "next/server";
 import { fromIni } from "@aws-sdk/credential-providers";
 import { load } from "js-yaml";
 
+// Type definitions
+interface YamlConcept {
+  id?: string;
+  wikibase_id?: string;
+  preferred_label?: string;
+  description?: string;
+}
+
+
+interface EnhancedConcept {
+  wikibase_id: string;
+  preferred_label: string;
+  description: string;
+  n_classifiers: number;
+}
+
 export async function GET() {
   try {
     const s3Client = new S3Client({
@@ -33,7 +49,7 @@ export async function GET() {
     }
 
     const yaml_content = await conceptsBody.transformToString();
-    const concepts = load(yaml_content) as any[];
+    const concepts = load(yaml_content) as (string | YamlConcept)[];
 
     // List all objects to find concept.json files
     const listCommand = new ListObjectsV2Command({ Bucket: bucket });
@@ -57,12 +73,15 @@ export async function GET() {
     }
 
     // For each concept, get the latest classifier's concept.json
-    const enhancedConcepts: any[] = [];
+    const enhancedConcepts: EnhancedConcept[] = [];
     for (const concept of concepts) {
       const conceptId =
         typeof concept === "string"
           ? concept
           : concept.id || concept.wikibase_id;
+
+      if (!conceptId) continue;
+
       const conceptJsonKeys = conceptJsonPaths[conceptId];
 
       if (conceptJsonKeys && conceptJsonKeys.length > 0) {
@@ -85,28 +104,35 @@ export async function GET() {
             const conceptMetadata = JSON.parse(conceptJsonContent);
 
             enhancedConcepts.push({
-              ...(typeof concept === "string"
-                ? { wikibase_id: concept }
-                : concept),
-              preferred_label: conceptMetadata.preferred_label,
-              description: conceptMetadata.description,
+              wikibase_id: conceptId,
+              preferred_label: conceptMetadata.preferred_label || (typeof concept === "string" ? concept : concept.preferred_label || conceptId),
+              description: conceptMetadata.description || (typeof concept === "string" ? `Concept ${concept}` : concept.description || `Concept ${conceptId}`),
               n_classifiers: conceptJsonKeys.length,
             });
           } else {
-            enhancedConcepts.push(
-              typeof concept === "string" ? { wikibase_id: concept } : concept,
-            );
+            enhancedConcepts.push({
+              wikibase_id: conceptId,
+              preferred_label: typeof concept === "string" ? concept : concept.preferred_label || conceptId,
+              description: typeof concept === "string" ? `Concept ${concept}` : concept.description || `Concept ${conceptId}`,
+              n_classifiers: conceptJsonKeys.length,
+            });
           }
         } catch (error) {
           console.warn(`Failed to fetch concept.json for ${conceptId}:`, error);
-          enhancedConcepts.push(
-            typeof concept === "string" ? { wikibase_id: concept } : concept,
-          );
+          enhancedConcepts.push({
+            wikibase_id: conceptId,
+            preferred_label: typeof concept === "string" ? concept : concept.preferred_label || conceptId,
+            description: typeof concept === "string" ? `Concept ${concept}` : concept.description || `Concept ${conceptId}`,
+            n_classifiers: 0,
+          });
         }
       } else {
-        enhancedConcepts.push(
-          typeof concept === "string" ? { wikibase_id: concept } : concept,
-        );
+        enhancedConcepts.push({
+          wikibase_id: conceptId,
+          preferred_label: typeof concept === "string" ? concept : concept.preferred_label || conceptId,
+          description: typeof concept === "string" ? `Concept ${concept}` : concept.description || `Concept ${conceptId}`,
+          n_classifiers: 0,
+        });
       }
     }
 

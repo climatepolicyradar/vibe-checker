@@ -1,5 +1,4 @@
 import {
-  GetObjectCommand,
   ListObjectsV2Command,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -9,7 +8,7 @@ import { fromIni } from "@aws-sdk/credential-providers";
 
 export async function GET(
   request: Request,
-  { params }: { params: { concept_id: string } },
+  { params }: { params: Promise<{ concept_id: string }> },
 ) {
   try {
     const s3Client = new S3Client({
@@ -20,7 +19,7 @@ export async function GET(
     });
 
     const bucket = process.env.BUCKET_NAME;
-    const { concept_id } = params;
+    const { concept_id } = await params;
 
     // List all objects under the concept_id prefix
     const command = new ListObjectsV2Command({
