@@ -20,7 +20,7 @@ export async function GET(
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
-    const pageSize = 100; // Fixed page size
+    const pageSize = 50; // Fixed page size
 
     // Parse filter parameters
     const filters: FilterParams = {
@@ -40,12 +40,11 @@ export async function GET(
     };
 
     // Validate pagination parameters
-    if (page < 1 || pageSize < 1 || pageSize > 100) {
+    if (page < 1) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "Invalid pagination parameters. Page must be >= 1, pageSize must be between 1 and 100",
+          error: "Invalid pagination parameters. Page must be >= 1",
         },
         { status: 400 },
       );

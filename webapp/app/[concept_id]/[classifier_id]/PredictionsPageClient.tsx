@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import PredictionFilters, { FilterState } from "@/components/PredictionFilters";
-import PaginationControls from "@/components/PaginationControls";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+import Link from "next/link";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import PaginationControls from "@/components/PaginationControls";
 
 interface PredictionsPageClientProps {
   conceptId: string;
@@ -19,15 +20,15 @@ export default function PredictionsPageClient({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Constants
-  const pageSize = 100;
-
   // API response state
+  const [pageSize, setPageSize] = useState<number>(0); // Will be inferred from results
   const [hasNextPage, setHasNextPage] = useState<boolean>(false);
   const [hasPreviousPage, setHasPreviousPage] = useState<boolean>(false);
   const [totalFiltered, setTotalFiltered] = useState<number>(0);
   const [totalUnfiltered, setTotalUnfiltered] = useState<number>(0);
-  const [availableCorpusTypes, setAvailableCorpusTypes] = useState<string[]>([]);
+  const [availableCorpusTypes, setAvailableCorpusTypes] = useState<string[]>(
+    [],
+  );
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
 
   // Concept metadata
@@ -77,40 +78,49 @@ export default function PredictionsPageClient({
   }, [searchParams]);
 
   // Memoized URL update function
-  const updateURL = useCallback((newFilters: FilterState, newPage: number) => {
-    const params = new URLSearchParams();
+  const updateURL = useCallback(
+    (newFilters: FilterState, newPage: number) => {
+      const params = new URLSearchParams();
 
-    // Add page
-    if (newPage > 1) {
-      params.set("page", newPage.toString());
-    }
+      // Add page
+      if (newPage > 1) {
+        params.set("page", newPage.toString());
+      }
 
-    // Add filters
-    if (newFilters.translated !== undefined) {
-      params.set("translated", newFilters.translated.toString());
-    }
-    if (newFilters.corpus_type) {
-      params.set("corpus_type", newFilters.corpus_type);
-    }
-    if (newFilters.world_bank_region) {
-      params.set("world_bank_region", newFilters.world_bank_region);
-    }
-    if (newFilters.publication_year_start) {
-      params.set("publication_year_start", newFilters.publication_year_start.toString());
-    }
-    if (newFilters.publication_year_end) {
-      params.set("publication_year_end", newFilters.publication_year_end.toString());
-    }
-    if (newFilters.document_id) {
-      params.set("document_id", newFilters.document_id);
-    }
+      // Add filters
+      if (newFilters.translated !== undefined) {
+        params.set("translated", newFilters.translated.toString());
+      }
+      if (newFilters.corpus_type) {
+        params.set("corpus_type", newFilters.corpus_type);
+      }
+      if (newFilters.world_bank_region) {
+        params.set("world_bank_region", newFilters.world_bank_region);
+      }
+      if (newFilters.publication_year_start) {
+        params.set(
+          "publication_year_start",
+          newFilters.publication_year_start.toString(),
+        );
+      }
+      if (newFilters.publication_year_end) {
+        params.set(
+          "publication_year_end",
+          newFilters.publication_year_end.toString(),
+        );
+      }
+      if (newFilters.document_id) {
+        params.set("document_id", newFilters.document_id);
+      }
 
-    const newURL = params.toString()
-      ? `/${conceptId}/${classifierId}?${params.toString()}`
-      : `/${conceptId}/${classifierId}`;
+      const newURL = params.toString()
+        ? `/${conceptId}/${classifierId}?${params.toString()}`
+        : `/${conceptId}/${classifierId}`;
 
-    router.replace(newURL);
-  }, [conceptId, classifierId, router]);
+      router.replace(newURL);
+    },
+    [conceptId, classifierId, router],
+  );
 
   // Fetch concept metadata first
   useEffect(() => {
@@ -119,7 +129,13 @@ export default function PredictionsPageClient({
         const response = await fetch(`/api/concepts`);
         const result = await response.json();
         if (result.success && result.data) {
-          const concept = result.data.find((c: { wikibase_id: string; preferred_label?: string; description?: string }) => c.wikibase_id === conceptId);
+          const concept = result.data.find(
+            (c: {
+              wikibase_id: string;
+              preferred_label?: string;
+              description?: string;
+            }) => c.wikibase_id === conceptId,
+          );
           if (concept) {
             setConceptData({
               preferred_label: concept.preferred_label,
@@ -148,7 +164,6 @@ export default function PredictionsPageClient({
 
         const params = new URLSearchParams();
         params.set("page", page.toString());
-        params.set("pageSize", pageSize.toString());
 
         // Add filter parameters
         Object.entries(filters).forEach(([key, value]) => {
@@ -165,6 +180,11 @@ export default function PredictionsPageClient({
 
         if (result.success) {
           setPredictions(result.data);
+
+          // Infer page size from results
+          if (result.data && result.data.length > 0) {
+            setPageSize(result.data.length);
+          }
 
           // Update pagination state
           if (result.pagination) {
@@ -197,16 +217,21 @@ export default function PredictionsPageClient({
     fetchPredictions();
   }, [conceptId, classifierId, urlState, pageSize]);
 
-
   // Memoized event handlers
-  const handleFilterChange = useCallback((newFilters: FilterState) => {
-    const newPage = 1; // Reset to first page when filters change
-    updateURL(newFilters, newPage);
-  }, [updateURL]);
+  const handleFilterChange = useCallback(
+    (newFilters: FilterState) => {
+      const newPage = 1; // Reset to first page when filters change
+      updateURL(newFilters, newPage);
+    },
+    [updateURL],
+  );
 
-  const handlePageChange = useCallback((newPage: number) => {
-    updateURL(urlState.filters, newPage);
-  }, [updateURL, urlState.filters]);
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      updateURL(urlState.filters, newPage);
+    },
+    [updateURL, urlState.filters],
+  );
 
   return (
     <div className="page-container">
@@ -221,25 +246,20 @@ export default function PredictionsPageClient({
                 >
                   {conceptId}
                 </Link>
-                <span className="text-secondary">
-                  {" "}
-                  /{" "}
-                </span>
-                <span className="text-primary">
-                  {classifierId}
-                </span>
+                <span className="text-secondary"> / </span>
+                <span className="text-primary">{classifierId}</span>
               </h1>
 
               {/* Concept metadata */}
               {(conceptData.preferred_label || conceptData.description) && (
                 <div className="mt-3 space-y-1">
                   {conceptData.preferred_label && (
-                    <div className="text-lg font-medium text-primary">
+                    <div className="text-primary text-lg font-medium">
                       {conceptData.preferred_label}
                     </div>
                   )}
                   {conceptData.description && (
-                    <div className="text-sm text-secondary">
+                    <div className="text-secondary text-sm">
                       {conceptData.description}
                     </div>
                   )}
@@ -251,7 +271,7 @@ export default function PredictionsPageClient({
                   href={`https://climatepolicyradar.wikibase.cloud/wiki/Item:${conceptId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-secondary transition-colors hover:text-primary"
+                  className="text-secondary hover:text-primary text-sm transition-colors"
                 >
                   View in Wikibase →
                 </a>
@@ -296,7 +316,6 @@ export default function PredictionsPageClient({
           </div>
         </div>
 
-
         {/* Pagination controls */}
         {!loading && !error && (
           <PaginationControls
@@ -312,7 +331,7 @@ export default function PredictionsPageClient({
         {loading && <LoadingSpinner message="Loading predictions..." />}
 
         {error && (
-          <div className="card mb-6 p-4 border-red-200 bg-red-50">
+          <div className="card mb-6 border-red-200 bg-red-50 p-4">
             <div className="text-primary">
               <strong className="font-medium">Error:</strong> {error}
             </div>
@@ -349,11 +368,11 @@ export default function PredictionsPageClient({
                       {pubDate.getFullYear()}
                     </span>
                   </div>
-                  <div className="mb-2 text-sm text-secondary">
+                  <div className="text-secondary mb-2 text-sm">
                     {metadata.document_id} | Page{" "}
                     {metadata["text_block.page_number"]}
                   </div>
-                  <div className="passage-text leading-relaxed text-primary">
+                  <div className="passage-text text-primary leading-relaxed">
                     {prediction.text}
                   </div>
                 </div>
