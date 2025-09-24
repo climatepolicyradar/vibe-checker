@@ -2,6 +2,7 @@ import io
 import json
 import logging
 import os
+import random
 from datetime import datetime
 from pathlib import Path
 
@@ -295,7 +296,9 @@ def process_single_concept(
             text = str(row["text_block.text"])
             predicted_spans = classifier.predict(text)
             labelled_passage = LabelledPassage(
-                text=text, spans=predicted_spans, metadata=row.to_dict()
+                text=text,
+                spans=predicted_spans,
+                metadata={str(k): str(v) for k, v in row.to_dict().items()},
             )
             labelled_passages.append(labelled_passage)
 
@@ -311,6 +314,9 @@ def process_single_concept(
 
         logger.info(f"Generated {len(labelled_passages)} labelled passages")
 
+        # before uploading the passages, we should shuffle them
+        random.shuffle(labelled_passages)
+
         output_prefix = Path(wikibase_id) / classifier.id
         logger.info(f"Outputs will be stored in s3://{BUCKET_NAME}/{output_prefix}")
 
@@ -322,7 +328,7 @@ def process_single_concept(
                         "marked_up_text": labelled_passage.get_highlighted_text(
                             start_pattern="<span>", end_pattern="</span>"
                         ),
-                        **labelled_passage.model_dump(),
+                        **json.loads(labelled_passage.model_dump_json()),
                     }
                 )
                 for labelled_passage in labelled_passages
