@@ -184,6 +184,7 @@ def process_single_concept(
     passages_dataset: pd.DataFrame,
     passages_embeddings: np.ndarray,
     passages_embeddings_metadata: dict,
+    embedding_model: SentenceTransformer,
 ) -> dict:
     """
     Process inference for a single concept.
@@ -204,8 +205,6 @@ def process_single_concept(
         concept = wikibase.get_concept(wikibase_id)
         logger.info(f"Loaded concept: {concept}")
 
-        embedding_model_name = passages_embeddings_metadata["embedding_model_name"]
-        embedding_model = SentenceTransformer(embedding_model_name)
         concept_embedding = embedding_model.encode(concept.to_markdown())
 
         # Batch compute similarities using pre-computed embeddings
@@ -326,7 +325,8 @@ def process_single_concept(
                 json.dumps(
                     {
                         "marked_up_text": labelled_passage.get_highlighted_text(
-                            start_pattern="<span>", end_pattern="</span>"
+                            start_pattern='<span class="prediction-highlight">',
+                            end_pattern="</span>",
                         ),
                         **json.loads(labelled_passage.model_dump_json()),
                     }
@@ -473,6 +473,11 @@ def vibe_checker_inference():
     passages_embeddings_metadata = load_embeddings_metadata()
     logger.info("Loaded embeddings generation metadata")
 
+    logger.info("Loading embedding model...")
+    embedding_model_name = passages_embeddings_metadata["embedding_model_name"]
+    embedding_model = SentenceTransformer(embedding_model_name)
+    logger.info(f"Loaded embedding model: {embedding_model_name}")
+
     # Submit a separate inference task for each of the concepts, and then wait for
     # all of them to complete
     logger.info(f"Starting parallel inference of {len(wikibase_ids)} concepts...")
@@ -483,6 +488,7 @@ def vibe_checker_inference():
             passages_dataset=passages_dataset,
             passages_embeddings=passages_embeddings,
             passages_embeddings_metadata=passages_embeddings_metadata,
+            embedding_model=embedding_model,
         )
         concept_futures.append(future)
 
