@@ -90,6 +90,9 @@ export default function PredictionsPageClient({
         ? parseInt(searchParams.get("publication_year_end")!)
         : undefined,
       document_id: searchParams.get("document_id") || undefined,
+      has_predictions: searchParams.get("has_predictions")
+        ? searchParams.get("has_predictions") === "true"
+        : undefined,
     };
     const searchTerms = searchParams.get("search") || undefined;
     return { page, filters, searchTerms };
@@ -129,6 +132,9 @@ export default function PredictionsPageClient({
       }
       if (newFilters.document_id) {
         params.set("document_id", newFilters.document_id);
+      }
+      if (newFilters.has_predictions !== undefined) {
+        params.set("has_predictions", newFilters.has_predictions.toString());
       }
       if (searchTerms) {
         params.set("search", searchTerms);

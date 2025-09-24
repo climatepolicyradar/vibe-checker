@@ -13,6 +13,7 @@ export interface FilterState {
   similarity_min?: number;
   similarity_max?: number;
   document_id?: string;
+  has_predictions?: boolean;
 }
 
 interface PredictionFiltersProps {
@@ -181,6 +182,69 @@ export default function PredictionFilters({
 
       {isExpanded && (
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+          {/* Has Predictions Filter */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-secondary">
+              Show Predictions
+            </label>
+            <Select.Root
+              items={[
+                { value: "", label: "All passages" },
+                { value: "true", label: "With predictions only" },
+                { value: "false", label: "Without predictions only" },
+              ]}
+              value={localFilters.has_predictions === undefined ? "" : localFilters.has_predictions.toString()}
+              onValueChange={(value) => {
+                immediateUpdateFilter(
+                  "has_predictions",
+                  value === "" ? undefined : value === "true",
+                );
+              }}
+            >
+              <Select.Trigger className="input w-full text-sm flex items-center justify-between">
+                <Select.Value />
+                <Select.Icon>
+                  <svg
+                    className="h-4 w-4 text-secondary"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Positioner>
+                  <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
+                    <Select.Item
+                      value=""
+                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                    >
+                      <Select.ItemText>All passages</Select.ItemText>
+                    </Select.Item>
+                    <Select.Item
+                      value="true"
+                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                    >
+                      <Select.ItemText>With predictions only</Select.ItemText>
+                    </Select.Item>
+                    <Select.Item
+                      value="false"
+                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                    >
+                      <Select.ItemText>Without predictions only</Select.ItemText>
+                    </Select.Item>
+                  </Select.Popup>
+                </Select.Positioner>
+              </Select.Portal>
+            </Select.Root>
+          </div>
           {/* Translation Status */}
           <div>
             <label className="mb-2 block text-sm font-medium text-secondary">
@@ -404,7 +468,7 @@ export default function PredictionFilters({
           </div>
 
           {/* Document ID Search */}
-          <div className="lg:col-span-2 xl:col-span-1">
+          <div>
             <label className="mb-2 block text-sm font-medium text-secondary">
               Document ID
             </label>

@@ -11,6 +11,7 @@ interface FilterParams {
   publication_year_end?: number;
   document_id?: string;
   search?: string;
+  has_predictions?: boolean;
 }
 
 export async function GET(
@@ -37,6 +38,9 @@ export async function GET(
         : undefined,
       document_id: searchParams.get("document_id") || undefined,
       search: searchParams.get("search") || undefined,
+      has_predictions: searchParams.get("has_predictions")
+        ? searchParams.get("has_predictions") === "true"
+        : undefined,
     };
 
     // Validate pagination parameters
@@ -150,6 +154,14 @@ export async function GET(
           if (!text.includes(searchTerm)) {
             return false;
           }
+        }
+      }
+
+      // Has predictions filter
+      if (filters.has_predictions !== undefined) {
+        const hasPredictions = prediction.spans && prediction.spans.length > 0;
+        if (hasPredictions !== filters.has_predictions) {
+          return false;
         }
       }
 
