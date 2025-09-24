@@ -20,7 +20,7 @@ export async function GET(
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
-    const pageSize = parseInt(searchParams.get("pageSize") || "100");
+    const pageSize = 100; // Fixed page size
 
     // Parse filter parameters
     const filters: FilterParams = {
@@ -75,6 +75,9 @@ export async function GET(
     // Parse JSONL data
     const lines = text.split("\n").filter((line) => line.trim() !== "");
     const allPredictions = lines.map((line) => JSON.parse(line));
+
+    // Store total unfiltered count
+    const totalUnfiltered = allPredictions.length;
 
     // Apply filters
     const filteredPredictions = allPredictions.filter((prediction) => {
@@ -171,6 +174,7 @@ export async function GET(
         page,
         pageSize,
         totalFiltered,
+        totalUnfiltered,
         totalPages,
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1,

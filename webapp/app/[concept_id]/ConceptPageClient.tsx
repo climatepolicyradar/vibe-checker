@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface ConceptPageClientProps {
   conceptId: string;
@@ -61,14 +62,7 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
           </div>
         </div>
 
-        {loading && (
-          <div className="py-12 text-center">
-            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-border-primary border-t-text-primary"></div>
-            <p className="mt-4 text-sm text-secondary">
-              Loading classifiers...
-            </p>
-          </div>
-        )}
+        {loading && <LoadingSpinner message="Loading classifiers..." />}
 
         {error && (
           <div className="card mb-6 p-4 border-red-200 bg-red-50">

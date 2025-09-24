@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PredictionFilters, { FilterState } from "@/components/PredictionFilters";
+import PaginationControls from "@/components/PaginationControls";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface PredictionsPageClientProps {
   conceptId: string;
@@ -13,18 +15,25 @@ export default function PredictionsPageClient({
   conceptId,
   classifierId,
 }: PredictionsPageClientProps) {
-  // Initialize page and pageSize
+  // Initialize page
   const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(100);
+  const pageSize = 100; // Fixed page size
 
   const [hasNextPage, setHasNextPage] = useState<boolean>(false);
   const [hasPreviousPage, setHasPreviousPage] = useState<boolean>(false);
   const [totalFiltered, setTotalFiltered] = useState<number>(0);
+  const [totalUnfiltered, setTotalUnfiltered] = useState<number>(0);
 
   // Filter state
   const [filters, setFilters] = useState<FilterState>({});
   const [availableCorpusTypes, setAvailableCorpusTypes] = useState<string[]>([]);
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
+
+  // Concept metadata
+  const [conceptData, setConceptData] = useState<{
+    preferred_label?: string;
+    description?: string;
+  }>({});
 
   interface Prediction {
     text: string;
@@ -45,6 +54,31 @@ export default function PredictionsPageClient({
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+
+  // Fetch concept metadata first
+  useEffect(() => {
+    const fetchConceptData = async () => {
+      try {
+        const response = await fetch(`/api/concepts`);
+        const result = await response.json();
+        if (result.success && result.data) {
+          const concept = result.data.find((c: { wikibase_id: string; preferred_label?: string; description?: string }) => c.wikibase_id === conceptId);
+          if (concept) {
+            setConceptData({
+              preferred_label: concept.preferred_label,
+              description: concept.description,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch concept data:", error);
+      }
+    };
+
+    if (conceptId) {
+      fetchConceptData();
+    }
+  }, [conceptId]);
 
   useEffect(() => {
     const buildQueryParams = () => {
@@ -79,6 +113,7 @@ export default function PredictionsPageClient({
             setHasNextPage(result.pagination.hasNextPage);
             setHasPreviousPage(result.pagination.hasPreviousPage);
             setTotalFiltered(result.pagination.totalFiltered);
+            setTotalUnfiltered(result.pagination.totalUnfiltered);
           }
 
           // Update available filter options
@@ -106,6 +141,31 @@ export default function PredictionsPageClient({
     }
   }, [conceptId, classifierId, page, pageSize, filters]);
 
+  // Fetch concept metadata
+  useEffect(() => {
+    const fetchConceptData = async () => {
+      try {
+        const response = await fetch(`/api/concepts`);
+        const result = await response.json();
+        if (result.success && result.data) {
+          const concept = result.data.find((c: { wikibase_id: string; preferred_label?: string; description?: string }) => c.wikibase_id === conceptId);
+          if (concept) {
+            setConceptData({
+              preferred_label: concept.preferred_label,
+              description: concept.description,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch concept data:", error);
+      }
+    };
+
+    if (conceptId) {
+      fetchConceptData();
+    }
+  }, [conceptId]);
+
   const handleFilterChange = (newFilters: FilterState) => {
     setFilters(newFilters);
     setPage(1); // Reset to first page when filters change
@@ -132,10 +192,28 @@ export default function PredictionsPageClient({
                   {classifierId}
                 </span>
               </h1>
-              <div className="mt-2">
+
+              {/* Concept metadata */}
+              {(conceptData.preferred_label || conceptData.description) && (
+                <div className="mt-3 space-y-1">
+                  {conceptData.preferred_label && (
+                    <div className="text-lg font-medium text-primary">
+                      {conceptData.preferred_label}
+                    </div>
+                  )}
+                  {conceptData.description && (
+                    <div className="text-sm text-secondary">
+                      {conceptData.description}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-3">
                 <a
-                  href="#"
+                  href={`https://climatepolicyradar.wikibase.cloud/wiki/Item:${conceptId}`}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="text-sm text-secondary transition-colors hover:text-primary"
                 >
                   View in Wikibase →
@@ -168,90 +246,32 @@ export default function PredictionsPageClient({
                 Download JSON
               </a>
             </div>
+
+            {/* Filters */}
+            <PredictionFilters
+              onFilterChange={handleFilterChange}
+              availableCorpusTypes={availableCorpusTypes}
+              availableRegions={availableRegions}
+              totalFiltered={totalFiltered}
+              totalUnfiltered={totalUnfiltered}
+            />
           </div>
         </div>
 
-        {/* Filters */}
-        <PredictionFilters
-          onFilterChange={handleFilterChange}
-          availableCorpusTypes={availableCorpusTypes}
-          availableRegions={availableRegions}
-        />
 
-        {/* Pagination and controls */}
-        <div className="card mb-6 p-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(parseInt(e.target.value, 10))}
-                className="input w-full lg:w-auto"
-              >
-                <option value={10}>10 per page</option>
-                <option value={25}>25 per page</option>
-                <option value={50}>50 per page</option>
-                <option value={100}>100 per page</option>
-              </select>
-              <button
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={!hasPreviousPage}
-                className={`w-full lg:w-auto ${
-                  hasPreviousPage
-                    ? "btn-primary"
-                    : "btn-secondary cursor-not-allowed opacity-50"
-                }`}
-              >
-                Previous
-              </button>
-              <span className="text-sm text-secondary lg:mx-2">
-                Page {page}
-              </span>
-              <button
-                onClick={() => setPage(page + 1)}
-                disabled={!hasNextPage}
-                className={`w-full lg:w-auto ${
-                  hasNextPage
-                    ? "btn-primary"
-                    : "btn-secondary cursor-not-allowed opacity-50"
-                }`}
-              >
-                Next
-              </button>
-            </div>
-            <div className="flex gap-2">
-              <button
-                id="shuffle"
-                className="btn-primary w-full lg:w-auto"
-              >
-                Shuffle Passages
-              </button>
-              <button
-                id="sortLength"
-                className="btn-primary w-full lg:w-auto"
-              >
-                Sort by Length (↓)
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Count display */}
-        <div className="mb-4 text-sm font-medium text-secondary">
-          Showing{" "}
-          <span id="visible-count" className="font-mono">
-            {predictions.length}
-          </span>{" "}
-          of <span className="font-mono">{totalFiltered}</span> filtered
-          passages
-        </div>
-
-        {loading && (
-          <div className="py-8 text-center">
-            <p className="text-secondary">
-              Loading predictions...
-            </p>
-          </div>
+        {/* Pagination controls */}
+        {!loading && !error && (
+          <PaginationControls
+            page={page}
+            totalFiltered={totalFiltered}
+            pageSize={pageSize}
+            hasNextPage={hasNextPage}
+            hasPreviousPage={hasPreviousPage}
+            onPageChange={setPage}
+          />
         )}
+
+        {loading && <LoadingSpinner message="Loading predictions..." />}
 
         {error && (
           <div className="card mb-6 p-4 border-red-200 bg-red-50">
@@ -301,6 +321,20 @@ export default function PredictionsPageClient({
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Bottom pagination controls */}
+        {!loading && !error && (
+          <div className="mt-6">
+            <PaginationControls
+              page={page}
+              totalFiltered={totalFiltered}
+              pageSize={pageSize}
+              hasNextPage={hasNextPage}
+              hasPreviousPage={hasPreviousPage}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

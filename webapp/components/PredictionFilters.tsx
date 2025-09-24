@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Slider } from "@base-ui-components/react/slider";
+import { Select } from "@base-ui-components/react/select";
 
 export interface FilterState {
   translated?: boolean;
@@ -17,18 +19,27 @@ interface PredictionFiltersProps {
   onFilterChange: (filters: FilterState) => void;
   availableCorpusTypes: string[];
   availableRegions: string[];
+  totalFiltered?: number;
+  totalUnfiltered?: number;
 }
 
 export default function PredictionFilters({
   onFilterChange,
   availableCorpusTypes,
   availableRegions,
+  totalFiltered = 0,
+  totalUnfiltered = 0,
 }: PredictionFiltersProps) {
   const [filters, setFilters] = useState<FilterState>({});
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Debounce filter changes to prevent rapid API calls during slider drag
   useEffect(() => {
-    onFilterChange(filters);
+    const timeout = setTimeout(() => {
+      onFilterChange(filters);
+    }, 300);
+
+    return () => clearTimeout(timeout);
   }, [filters, onFilterChange]);
 
   const updateFilter = (
@@ -50,7 +61,7 @@ export default function PredictionFilters({
   ).length;
 
   return (
-    <div className="card mb-6 p-4">
+    <div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
@@ -79,6 +90,19 @@ export default function PredictionFilters({
               {activeFilterCount}
             </span>
           )}
+          {activeFilterCount > 0 && totalUnfiltered > 0 && (
+            <div className="flex items-center gap-2 text-xs text-secondary">
+              <div className="h-1.5 w-24 bg-bg-tertiary rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-text-primary rounded-full transition-all duration-300"
+                  style={{ width: `${(totalFiltered / totalUnfiltered) * 100}%` }}
+                />
+              </div>
+              <span className="font-mono">
+                {totalFiltered} / {totalUnfiltered}
+              </span>
+            </div>
+          )}
         </div>
         {activeFilterCount > 0 && (
           <button
@@ -97,24 +121,63 @@ export default function PredictionFilters({
             <label className="mb-2 block text-sm font-medium text-secondary">
               Translation Status
             </label>
-            <select
-              value={
-                filters.translated === undefined
-                  ? ""
-                  : filters.translated.toString()
-              }
-              onChange={(e) =>
+            <Select.Root
+              items={[
+                { value: "", label: "All" },
+                { value: "true", label: "Translated" },
+                { value: "false", label: "Original" },
+              ]}
+              value={filters.translated === undefined ? "" : filters.translated.toString()}
+              onValueChange={(value) => {
                 updateFilter(
                   "translated",
-                  e.target.value === "" ? undefined : e.target.value === "true",
-                )
-              }
-              className="input w-full text-sm"
+                  value === "" ? undefined : value === "true",
+                );
+              }}
             >
-              <option value="">All</option>
-              <option value="true">Translated</option>
-              <option value="false">Original</option>
-            </select>
+              <Select.Trigger className="input w-full text-sm flex items-center justify-between">
+                <Select.Value />
+                <Select.Icon>
+                  <svg
+                    className="h-4 w-4 text-secondary"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Positioner>
+                  <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
+                    <Select.Item
+                      value=""
+                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                    >
+                      <Select.ItemText>All</Select.ItemText>
+                    </Select.Item>
+                    <Select.Item
+                      value="true"
+                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                    >
+                      <Select.ItemText>Translated</Select.ItemText>
+                    </Select.Item>
+                    <Select.Item
+                      value="false"
+                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                    >
+                      <Select.ItemText>Original</Select.ItemText>
+                    </Select.Item>
+                  </Select.Popup>
+                </Select.Positioner>
+              </Select.Portal>
+            </Select.Root>
           </div>
 
           {/* Corpus Type */}
@@ -122,18 +185,57 @@ export default function PredictionFilters({
             <label className="mb-2 block text-sm font-medium text-secondary">
               Corpus Type
             </label>
-            <select
+            <Select.Root
+              items={[
+                { value: "", label: "All types" },
+                ...availableCorpusTypes.map((type) => ({
+                  value: type,
+                  label: type,
+                })),
+              ]}
               value={filters.corpus_type || ""}
-              onChange={(e) => updateFilter("corpus_type", e.target.value)}
-              className="input w-full text-sm"
+              onValueChange={(value) => updateFilter("corpus_type", value)}
             >
-              <option value="">All types</option>
-              {availableCorpusTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
+              <Select.Trigger className="input w-full text-sm flex items-center justify-between">
+                <Select.Value />
+                <Select.Icon>
+                  <svg
+                    className="h-4 w-4 text-secondary"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Positioner>
+                  <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
+                    <Select.Item
+                      value=""
+                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                    >
+                      <Select.ItemText>All types</Select.ItemText>
+                    </Select.Item>
+                    {availableCorpusTypes.map((type) => (
+                      <Select.Item
+                        key={type}
+                        value={type}
+                        className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      >
+                        <Select.ItemText>{type}</Select.ItemText>
+                      </Select.Item>
+                    ))}
+                  </Select.Popup>
+                </Select.Positioner>
+              </Select.Portal>
+            </Select.Root>
           </div>
 
           {/* World Bank Region */}
@@ -141,61 +243,97 @@ export default function PredictionFilters({
             <label className="mb-2 block text-sm font-medium text-secondary">
               Region
             </label>
-            <select
+            <Select.Root
+              items={[
+                { value: "", label: "All regions" },
+                ...availableRegions.map((region) => ({
+                  value: region,
+                  label: region,
+                })),
+              ]}
               value={filters.world_bank_region || ""}
-              onChange={(e) =>
-                updateFilter("world_bank_region", e.target.value)
-              }
-              className="input w-full text-sm"
+              onValueChange={(value) => updateFilter("world_bank_region", value)}
             >
-              <option value="">All regions</option>
-              {availableRegions.map((region) => (
-                <option key={region} value={region}>
-                  {region}
-                </option>
-              ))}
-            </select>
+              <Select.Trigger className="input w-full text-sm flex items-center justify-between">
+                <Select.Value />
+                <Select.Icon>
+                  <svg
+                    className="h-4 w-4 text-secondary"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </Select.Icon>
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Positioner>
+                  <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
+                    <Select.Item
+                      value=""
+                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                    >
+                      <Select.ItemText>All regions</Select.ItemText>
+                    </Select.Item>
+                    {availableRegions.map((region) => (
+                      <Select.Item
+                        key={region}
+                        value={region}
+                        className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      >
+                        <Select.ItemText>{region}</Select.ItemText>
+                      </Select.Item>
+                    ))}
+                  </Select.Popup>
+                </Select.Positioner>
+              </Select.Portal>
+            </Select.Root>
           </div>
 
           {/* Publication Year Range */}
           <div>
             <label className="mb-2 block text-sm font-medium text-secondary">
-              Publication Year (From)
+              Publication Year Range
             </label>
-            <input
-              type="number"
-              min="1990"
-              max="2030"
-              value={filters.publication_year_start || ""}
-              onChange={(e) =>
-                updateFilter(
-                  "publication_year_start",
-                  e.target.value ? parseInt(e.target.value) : undefined,
-                )
-              }
-              className="input w-full text-sm"
-              placeholder="e.g. 2020"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-secondary">
-              Publication Year (To)
-            </label>
-            <input
-              type="number"
-              min="1990"
-              max="2030"
-              value={filters.publication_year_end || ""}
-              onChange={(e) =>
-                updateFilter(
-                  "publication_year_end",
-                  e.target.value ? parseInt(e.target.value) : undefined,
-                )
-              }
-              className="input w-full text-sm"
-              placeholder="e.g. 2024"
-            />
+            <div className="px-2">
+              <Slider.Root
+                min={1990}
+                max={2030}
+                value={[
+                  filters.publication_year_start || 1990,
+                  filters.publication_year_end || 2030,
+                ]}
+                onValueChange={(value: number[]) => {
+                  updateFilter("publication_year_start", value[0] === 1990 ? undefined : value[0]);
+                  updateFilter("publication_year_end", value[1] === 2030 ? undefined : value[1]);
+                }}
+                className="relative flex w-full touch-none select-none items-center"
+              >
+                <Slider.Control className="relative flex h-5 w-full cursor-pointer items-center">
+                  <Slider.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-bg-tertiary">
+                    <Slider.Indicator className="absolute h-full bg-text-primary" />
+                  </Slider.Track>
+                  <Slider.Thumb
+                    index={0}
+                    className="block h-5 w-5 rounded-full border-2 border-text-primary bg-bg-primary shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                  />
+                  <Slider.Thumb
+                    index={1}
+                    className="block h-5 w-5 rounded-full border-2 border-text-primary bg-bg-primary shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                  />
+                </Slider.Control>
+              </Slider.Root>
+              <div className="mt-2 flex justify-between text-xs text-secondary">
+                <span>{filters.publication_year_start || 1990}</span>
+                <span>{filters.publication_year_end || 2030}</span>
+              </div>
+            </div>
           </div>
 
           {/* Document ID Search */}
