@@ -76,7 +76,7 @@ export default function Home() {
   }, [searchTerm, concepts]);
 
   return (
-    <div className="bg-neutral-0 min-h-screen p-6 dark:bg-neutral-900">
+    <div className="page-container">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8">
           <div className="mb-4 md:mb-0 md:flex md:items-center md:justify-between">

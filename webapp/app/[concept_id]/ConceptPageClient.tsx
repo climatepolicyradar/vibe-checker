@@ -4,15 +4,35 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Breadcrumb from "@/components/Breadcrumb";
-import ExternalLink from "@/components/ExternalLink";
+import ConceptHeader from "@/components/ConceptHeader";
 import MaterialIcon from "@/components/MaterialIcon";
+
+interface ClassifierData {
+  id: string;
+  string: string;
+  name: string;
+  date: string;
+}
+
+interface ClassifierInfo {
+  id: string;
+  data?: ClassifierData;
+  loading: boolean;
+  error?: string;
+}
+
+interface ConceptData {
+  preferred_label?: string;
+  description?: string;
+}
 
 interface ConceptPageClientProps {
   conceptId: string;
 }
 
 export default function ConceptPageClient({ conceptId }: ConceptPageClientProps) {
-  const [classifiers, setClassifiers] = useState<string[]>([]);
+  const [classifiers, setClassifiers] = useState<ClassifierInfo[]>([]);
+  const [conceptData, setConceptData] = useState<ConceptData>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
@@ -23,7 +43,88 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
         const result = await response.json();
 
         if (result.success) {
-          setClassifiers(result.data);
+          // Initialize classifiers with loading state
+          const classifierInfos: ClassifierInfo[] = result.data.map((id: string) => ({
+            id,
+            loading: true,
+          }));
+          setClassifiers(classifierInfos);
+
+          // Fetch detailed data for each classifier and concept metadata
+          classifierInfos.forEach(async (classifierInfo, index) => {
+            try {
+              const classifierResponse = await fetch(
+                `/api/concepts/${conceptId}/classifiers/${classifierInfo.id}`
+              );
+              const classifierResult = await classifierResponse.json();
+
+              if (classifierResult.success) {
+                setClassifiers(prev =>
+                  prev.map((c, i) =>
+                    i === index
+                      ? { ...c, data: classifierResult.data, loading: false }
+                      : c
+                  )
+                );
+              } else {
+                setClassifiers(prev =>
+                  prev.map((c, i) =>
+                    i === index
+                      ? { ...c, error: classifierResult.error, loading: false }
+                      : c
+                  )
+                );
+              }
+            } catch (err) {
+              setClassifiers(prev =>
+                prev.map((c, i) =>
+                  i === index
+                    ? {
+                        ...c,
+                        error: err instanceof Error ? err.message : "Unknown error",
+                        loading: false
+                      }
+                    : c
+                )
+              );
+            }
+          });
+
+          // Fetch concept metadata from the first classifier
+          if (classifierInfos.length > 0) {
+            try {
+              const conceptResponse = await fetch(
+                `/api/concepts/${conceptId}/classifiers/${classifierInfos[0].id}`
+              );
+              const conceptResult = await conceptResponse.json();
+
+              if (conceptResult.success) {
+                // Fetch the concept.json file to get metadata
+                const conceptJsonResponse = await fetch(
+                  `/api/predictions/${conceptId}/${classifierInfos[0].id}?page=1`
+                );
+                const conceptJsonResult = await conceptJsonResponse.json();
+
+                if (conceptJsonResult.success) {
+                  // Extract concept data from the predictions response metadata or try the concept endpoint
+                  const conceptsResponse = await fetch('/api/concepts');
+                  const conceptsResult = await conceptsResponse.json();
+
+                  if (conceptsResult.success) {
+                    const concept = conceptsResult.data.find((c: any) => c.wikibase_id === conceptId);
+                    if (concept) {
+                      setConceptData({
+                        preferred_label: concept.preferred_label,
+                        description: concept.description,
+                      });
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              console.error("Error fetching concept metadata:", err);
+            }
+          }
         } else {
           throw new Error(result.error || "Failed to fetch classifiers");
         }
@@ -49,22 +150,10 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
       <div className="mx-auto max-w-7xl">
         <Breadcrumb href="/">Back to all concepts</Breadcrumb>
 
-        {/* Header section */}
-        <div className="card mb-6 p-6">
-          <div className="flex flex-col gap-2">
-            <h1 className="page-title">
-              {conceptId}
-            </h1>
-            <div>
-              <ExternalLink
-                href={`https://climatepolicyradar.wikibase.cloud/wiki/Item:${conceptId}`}
-                className="text-sm text-secondary hover:text-primary"
-              >
-                View in Wikibase
-              </ExternalLink>
-            </div>
-          </div>
-        </div>
+        <ConceptHeader
+          conceptId={conceptId}
+          conceptData={conceptData}
+        />
 
         {loading && <LoadingSpinner message="Loading classifiers..." />}
 
@@ -77,29 +166,82 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
         )}
 
         {!loading && !error && classifiers.length > 0 && (
-          <div className="card">
-            <div className="card-header">
-              <h2 className="font-serif text-lg font-medium text-primary">
-                Available Classifiers
-              </h2>
-            </div>
-
-            <div className="divide-y divide-border-primary">
-              {classifiers.map((classifierId) => (
-                <Link
-                  key={classifierId}
-                  href={`/${conceptId}/${classifierId}`}
-                  className="block p-6 transition-colors hover:bg-interactive-hover"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-primary">
-                      {classifierId}
-                    </span>
-                    <MaterialIcon name="chevron_right" size={20} className="text-secondary" />
-                  </div>
-                </Link>
-              ))}
-            </div>
+          <div className="card overflow-hidden">
+            <table className="w-full table-auto text-left">
+              <thead>
+                <tr>
+                  <th className="w-40 border-b border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-600 dark:bg-neutral-700">
+                    <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
+                      ID
+                    </p>
+                  </th>
+                  <th className="hidden border-b border-neutral-200 bg-neutral-50 p-4 md:table-cell dark:border-neutral-600 dark:bg-neutral-700">
+                    <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
+                      Name
+                    </p>
+                  </th>
+                  <th className="w-32 border-b border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-600 dark:bg-neutral-700">
+                    <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
+                      Created
+                    </p>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {classifiers.map((classifier) => (
+                  <tr
+                    key={classifier.id}
+                    className="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700"
+                    onClick={() => (window.location.href = `/${conceptId}/${classifier.id}`)}
+                  >
+                    <td className="border-b border-neutral-200 p-4 dark:border-neutral-600">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium break-words text-neutral-900 dark:text-neutral-100">
+                          {classifier.id}
+                        </p>
+                        {classifier.loading && (
+                          <MaterialIcon
+                            name="progress_activity"
+                            size={16}
+                            className="text-neutral-400 animate-spin"
+                          />
+                        )}
+                      </div>
+                    </td>
+                    <td className="hidden border-b border-neutral-200 p-4 md:table-cell dark:border-neutral-600">
+                      {classifier.data ? (
+                        <p className="text-sm break-words text-neutral-600 dark:text-neutral-400">
+                          {classifier.data.name}
+                        </p>
+                      ) : classifier.error ? (
+                        <p className="text-sm text-red-600">
+                          Failed to load
+                        </p>
+                      ) : classifier.loading ? (
+                        <p className="text-sm text-neutral-400">
+                          Loading...
+                        </p>
+                      ) : (
+                        <p className="text-sm text-neutral-400">
+                          —
+                        </p>
+                      )}
+                    </td>
+                    <td className="border-b border-neutral-200 p-4 dark:border-neutral-600">
+                      {classifier.data ? (
+                        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                          {new Date(classifier.data.date).toLocaleDateString()}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-neutral-400">
+                          —
+                        </p>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 

@@ -8,8 +8,8 @@ import Link from "next/link";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import PaginationControls from "@/components/PaginationControls";
 import Breadcrumb from "@/components/Breadcrumb";
+import ConceptHeader from "@/components/ConceptHeader";
 import MaterialIcon from "@/components/MaterialIcon";
-import ExternalLink from "@/components/ExternalLink";
 import SearchBox from "@/components/SearchBox";
 
 interface PredictionsPageClientProps {
@@ -277,45 +277,14 @@ export default function PredictionsPageClient({
       <div className="mx-auto max-w-7xl">
         <Breadcrumb href={`/${conceptId}`}>Back to classifiers</Breadcrumb>
 
+        <ConceptHeader
+          conceptId={conceptId}
+          classifierId={classifierId}
+          conceptData={conceptData}
+        />
+
         <div className="card mb-6 p-6">
           <div className="flex flex-col gap-4">
-            <div>
-              <h1 className="page-title">
-                <Link
-                  href={`/${conceptId}`}
-                  className="text-accent-primary transition-colors hover:text-accent-secondary"
-                >
-                  {conceptId}
-                </Link>
-                <span className="text-secondary"> / </span>
-                <span className="text-primary">{classifierId}</span>
-              </h1>
-
-              {/* Concept metadata */}
-              {(conceptData.preferred_label || conceptData.description) && (
-                <div className="mt-3 space-y-1">
-                  {conceptData.preferred_label && (
-                    <div className="text-primary text-lg font-medium">
-                      {conceptData.preferred_label}
-                    </div>
-                  )}
-                  {conceptData.description && (
-                    <div className="text-secondary text-sm">
-                      {conceptData.description}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-3">
-                <ExternalLink
-                  href={`https://climatepolicyradar.wikibase.cloud/wiki/Item:${conceptId}`}
-                  className="text-secondary hover:text-primary text-sm"
-                >
-                  View in Wikibase
-                </ExternalLink>
-              </div>
-            </div>
 
             {/* Search and Actions */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
