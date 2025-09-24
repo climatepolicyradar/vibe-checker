@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Slider } from "@base-ui-components/react/slider";
 import { Select } from "@base-ui-components/react/select";
 
@@ -16,6 +16,7 @@ export interface FilterState {
 }
 
 interface PredictionFiltersProps {
+  filters: FilterState;
   onFilterChange: (filters: FilterState) => void;
   availableCorpusTypes: string[];
   availableRegions: string[];
@@ -24,40 +25,102 @@ interface PredictionFiltersProps {
 }
 
 export default function PredictionFilters({
+  filters,
   onFilterChange,
   availableCorpusTypes,
   availableRegions,
   totalFiltered = 0,
   totalUnfiltered = 0,
 }: PredictionFiltersProps) {
-  const [filters, setFilters] = useState<FilterState>({});
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Debounce filter changes to prevent rapid API calls during slider drag
+  // Local state for immediate UI feedback during debounced updates
+  const [localFilters, setLocalFilters] = useState<FilterState>(filters);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Update local state when URL-derived filters change
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      onFilterChange(filters);
-    }, 300);
+    setLocalFilters(filters);
+  }, [filters]);
 
-    return () => clearTimeout(timeout);
-  }, [filters, onFilterChange]);
-
-  const updateFilter = (
+  // Debounced update function for smooth interactions
+  const debouncedUpdateFilter = (
     key: keyof FilterState,
     value: string | number | boolean | undefined,
   ) => {
-    setFilters((prev) => ({
-      ...prev,
+    const newValue = value === "" || value === undefined ? undefined : value;
+    const newLocalFilters = {
+      ...localFilters,
+      [key]: newValue,
+    };
+
+    // Update local state immediately for smooth UI
+    setLocalFilters(newLocalFilters);
+
+    // Clear existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    // Set new timeout for URL update
+    debounceTimeoutRef.current = setTimeout(() => {
+      onFilterChange(newLocalFilters);
+    }, 300);
+  };
+
+  // Special debounced update for multiple filter keys (like slider range)
+  const debouncedUpdateMultipleFilters = (updates: Partial<FilterState>) => {
+    const newLocalFilters = {
+      ...localFilters,
+      ...updates,
+    };
+
+    // Update local state immediately for smooth UI
+    setLocalFilters(newLocalFilters);
+
+    // Clear existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    // Set new timeout for URL update
+    debounceTimeoutRef.current = setTimeout(() => {
+      onFilterChange(newLocalFilters);
+    }, 300);
+  };
+
+  // Immediate update for non-text inputs (selects)
+  const immediateUpdateFilter = (
+    key: keyof FilterState,
+    value: string | number | boolean | undefined,
+  ) => {
+    const newFilters = {
+      ...filters,
       [key]: value === "" || value === undefined ? undefined : value,
-    }));
+    };
+    onFilterChange(newFilters);
   };
 
   const clearFilters = () => {
-    setFilters({});
+    // Clear any pending debounced updates
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    setLocalFilters({});
+    onFilterChange({});
   };
 
-  const activeFilterCount = Object.keys(filters).filter(
-    (key) => filters[key as keyof FilterState] !== undefined,
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const activeFilterCount = Object.keys(localFilters).filter(
+    (key) => localFilters[key as keyof FilterState] !== undefined,
   ).length;
 
   return (
@@ -127,9 +190,9 @@ export default function PredictionFilters({
                 { value: "true", label: "Translated" },
                 { value: "false", label: "Original" },
               ]}
-              value={filters.translated === undefined ? "" : filters.translated.toString()}
+              value={localFilters.translated === undefined ? "" : localFilters.translated.toString()}
               onValueChange={(value) => {
-                updateFilter(
+                immediateUpdateFilter(
                   "translated",
                   value === "" ? undefined : value === "true",
                 );
@@ -193,8 +256,8 @@ export default function PredictionFilters({
                   label: type,
                 })),
               ]}
-              value={filters.corpus_type || ""}
-              onValueChange={(value) => updateFilter("corpus_type", value)}
+              value={localFilters.corpus_type || ""}
+              onValueChange={(value) => immediateUpdateFilter("corpus_type", value)}
             >
               <Select.Trigger className="input w-full text-sm flex items-center justify-between">
                 <Select.Value />
@@ -251,8 +314,8 @@ export default function PredictionFilters({
                   label: region,
                 })),
               ]}
-              value={filters.world_bank_region || ""}
-              onValueChange={(value) => updateFilter("world_bank_region", value)}
+              value={localFilters.world_bank_region || ""}
+              onValueChange={(value) => immediateUpdateFilter("world_bank_region", value)}
             >
               <Select.Trigger className="input w-full text-sm flex items-center justify-between">
                 <Select.Value />
@@ -306,12 +369,14 @@ export default function PredictionFilters({
                 min={1990}
                 max={2030}
                 value={[
-                  filters.publication_year_start || 1990,
-                  filters.publication_year_end || 2030,
+                  localFilters.publication_year_start || 1990,
+                  localFilters.publication_year_end || 2030,
                 ]}
                 onValueChange={(value: number[]) => {
-                  updateFilter("publication_year_start", value[0] === 1990 ? undefined : value[0]);
-                  updateFilter("publication_year_end", value[1] === 2030 ? undefined : value[1]);
+                  debouncedUpdateMultipleFilters({
+                    publication_year_start: value[0] === 1990 ? undefined : value[0],
+                    publication_year_end: value[1] === 2030 ? undefined : value[1],
+                  });
                 }}
                 className="relative flex w-full touch-none select-none items-center"
               >
@@ -330,8 +395,8 @@ export default function PredictionFilters({
                 </Slider.Control>
               </Slider.Root>
               <div className="mt-2 flex justify-between text-xs text-secondary">
-                <span>{filters.publication_year_start || 1990}</span>
-                <span>{filters.publication_year_end || 2030}</span>
+                <span>{localFilters.publication_year_start || 1990}</span>
+                <span>{localFilters.publication_year_end || 2030}</span>
               </div>
             </div>
           </div>
@@ -343,8 +408,8 @@ export default function PredictionFilters({
             </label>
             <input
               type="text"
-              value={filters.document_id || ""}
-              onChange={(e) => updateFilter("document_id", e.target.value)}
+              value={localFilters.document_id || ""}
+              onChange={(e) => debouncedUpdateFilter("document_id", e.target.value)}
               className="input w-full text-sm"
               placeholder="e.g. CCLW.executive.10310.4923"
             />

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import PredictionFilters, { FilterState } from "@/components/PredictionFilters";
 import PaginationControls from "@/components/PaginationControls";
 import LoadingSpinner from "@/components/LoadingSpinner";
@@ -15,17 +16,17 @@ export default function PredictionsPageClient({
   conceptId,
   classifierId,
 }: PredictionsPageClientProps) {
-  // Initialize page
-  const [page, setPage] = useState<number>(1);
-  const pageSize = 100; // Fixed page size
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
+  // Constants
+  const pageSize = 100;
+
+  // API response state
   const [hasNextPage, setHasNextPage] = useState<boolean>(false);
   const [hasPreviousPage, setHasPreviousPage] = useState<boolean>(false);
   const [totalFiltered, setTotalFiltered] = useState<number>(0);
   const [totalUnfiltered, setTotalUnfiltered] = useState<number>(0);
-
-  // Filter state
-  const [filters, setFilters] = useState<FilterState>({});
   const [availableCorpusTypes, setAvailableCorpusTypes] = useState<string[]>([]);
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
 
@@ -55,6 +56,62 @@ export default function PredictionsPageClient({
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
+  // Memoize URL-derived state to prevent unnecessary re-renders
+  const urlState = useMemo(() => {
+    const page = parseInt(searchParams.get("page") || "1");
+    const filters: FilterState = {
+      translated: searchParams.get("translated")
+        ? searchParams.get("translated") === "true"
+        : undefined,
+      corpus_type: searchParams.get("corpus_type") || undefined,
+      world_bank_region: searchParams.get("world_bank_region") || undefined,
+      publication_year_start: searchParams.get("publication_year_start")
+        ? parseInt(searchParams.get("publication_year_start")!)
+        : undefined,
+      publication_year_end: searchParams.get("publication_year_end")
+        ? parseInt(searchParams.get("publication_year_end")!)
+        : undefined,
+      document_id: searchParams.get("document_id") || undefined,
+    };
+    return { page, filters };
+  }, [searchParams]);
+
+  // Memoized URL update function
+  const updateURL = useCallback((newFilters: FilterState, newPage: number) => {
+    const params = new URLSearchParams();
+
+    // Add page
+    if (newPage > 1) {
+      params.set("page", newPage.toString());
+    }
+
+    // Add filters
+    if (newFilters.translated !== undefined) {
+      params.set("translated", newFilters.translated.toString());
+    }
+    if (newFilters.corpus_type) {
+      params.set("corpus_type", newFilters.corpus_type);
+    }
+    if (newFilters.world_bank_region) {
+      params.set("world_bank_region", newFilters.world_bank_region);
+    }
+    if (newFilters.publication_year_start) {
+      params.set("publication_year_start", newFilters.publication_year_start.toString());
+    }
+    if (newFilters.publication_year_end) {
+      params.set("publication_year_end", newFilters.publication_year_end.toString());
+    }
+    if (newFilters.document_id) {
+      params.set("document_id", newFilters.document_id);
+    }
+
+    const newURL = params.toString()
+      ? `/${conceptId}/${classifierId}?${params.toString()}`
+      : `/${conceptId}/${classifierId}`;
+
+    router.replace(newURL);
+  }, [conceptId, classifierId, router]);
+
   // Fetch concept metadata first
   useEffect(() => {
     const fetchConceptData = async () => {
@@ -80,26 +137,27 @@ export default function PredictionsPageClient({
     }
   }, [conceptId]);
 
+  // Fetch predictions based on URL state
   useEffect(() => {
-    const buildQueryParams = () => {
-      const params = new URLSearchParams();
-      params.set("page", page.toString());
-      params.set("pageSize", pageSize.toString());
-
-      // Add filter parameters
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== "") {
-          params.set(key, value.toString());
-        }
-      });
-
-      return params.toString();
-    };
-
     const fetchPredictions = async () => {
+      if (!conceptId || !classifierId) return;
+
       setLoading(true);
       try {
-        const queryString = buildQueryParams();
+        const { page, filters } = urlState;
+
+        const params = new URLSearchParams();
+        params.set("page", page.toString());
+        params.set("pageSize", pageSize.toString());
+
+        // Add filter parameters
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value !== undefined && value !== "") {
+            params.set(key, value.toString());
+          }
+        });
+
+        const queryString = params.toString();
         const response = await fetch(
           `/api/predictions/${conceptId}/${classifierId}?${queryString}`,
         );
@@ -136,40 +194,19 @@ export default function PredictionsPageClient({
       }
     };
 
-    if (conceptId && classifierId) {
-      fetchPredictions();
-    }
-  }, [conceptId, classifierId, page, pageSize, filters]);
+    fetchPredictions();
+  }, [conceptId, classifierId, urlState, pageSize]);
 
-  // Fetch concept metadata
-  useEffect(() => {
-    const fetchConceptData = async () => {
-      try {
-        const response = await fetch(`/api/concepts`);
-        const result = await response.json();
-        if (result.success && result.data) {
-          const concept = result.data.find((c: { wikibase_id: string; preferred_label?: string; description?: string }) => c.wikibase_id === conceptId);
-          if (concept) {
-            setConceptData({
-              preferred_label: concept.preferred_label,
-              description: concept.description,
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch concept data:", error);
-      }
-    };
 
-    if (conceptId) {
-      fetchConceptData();
-    }
-  }, [conceptId]);
+  // Memoized event handlers
+  const handleFilterChange = useCallback((newFilters: FilterState) => {
+    const newPage = 1; // Reset to first page when filters change
+    updateURL(newFilters, newPage);
+  }, [updateURL]);
 
-  const handleFilterChange = (newFilters: FilterState) => {
-    setFilters(newFilters);
-    setPage(1); // Reset to first page when filters change
-  };
+  const handlePageChange = useCallback((newPage: number) => {
+    updateURL(urlState.filters, newPage);
+  }, [updateURL, urlState.filters]);
 
   return (
     <div className="page-container">
@@ -249,6 +286,7 @@ export default function PredictionsPageClient({
 
             {/* Filters */}
             <PredictionFilters
+              filters={urlState.filters}
               onFilterChange={handleFilterChange}
               availableCorpusTypes={availableCorpusTypes}
               availableRegions={availableRegions}
@@ -262,12 +300,12 @@ export default function PredictionsPageClient({
         {/* Pagination controls */}
         {!loading && !error && (
           <PaginationControls
-            page={page}
+            page={urlState.page}
             totalFiltered={totalFiltered}
             pageSize={pageSize}
             hasNextPage={hasNextPage}
             hasPreviousPage={hasPreviousPage}
-            onPageChange={setPage}
+            onPageChange={handlePageChange}
           />
         )}
 
@@ -328,12 +366,12 @@ export default function PredictionsPageClient({
         {!loading && !error && (
           <div className="mt-6">
             <PaginationControls
-              page={page}
+              page={urlState.page}
               totalFiltered={totalFiltered}
               pageSize={pageSize}
               hasNextPage={hasNextPage}
               hasPreviousPage={hasPreviousPage}
-              onPageChange={setPage}
+              onPageChange={handlePageChange}
             />
           </div>
         )}
