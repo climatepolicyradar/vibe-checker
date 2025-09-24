@@ -7,6 +7,7 @@ import {
 import { NextResponse } from "next/server";
 import { fromIni } from "@aws-sdk/credential-providers";
 import { load } from "js-yaml";
+import cache from "@/lib/cache";
 
 // Type definitions
 interface YamlConcept {
@@ -26,6 +27,16 @@ interface EnhancedConcept {
 
 export async function GET() {
   try {
+    // Check cache first
+    const cacheKey = 'concepts';
+    const cachedData = cache.get(cacheKey);
+
+    if (cachedData) {
+      console.log('Cache hit for concepts');
+      return NextResponse.json(cachedData);
+    }
+
+    console.log('Cache miss for concepts, fetching from S3...');
     const s3Client = new S3Client({
       region: process.env.AWS_REGION,
       credentials: fromIni({
@@ -136,10 +147,16 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({
+    const result = {
       success: true,
       data: enhancedConcepts,
-    });
+    };
+
+    // Store in cache
+    cache.set(cacheKey, result);
+    console.log('Concepts data cached successfully');
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error fetching concepts from S3:", error);
     return NextResponse.json(

@@ -2,6 +2,7 @@ import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 import { NextResponse } from "next/server";
 import { fromIni } from "@aws-sdk/credential-providers";
+import cache from "@/lib/cache";
 
 interface FilterParams {
   translated?: boolean;
@@ -54,30 +55,44 @@ export async function GET(
       );
     }
 
-    const s3Client = new S3Client({
-      region: process.env.AWS_REGION,
-      credentials: fromIni({
-        profile: process.env.AWS_PROFILE,
-      }),
-    });
-
-    const bucket = process.env.BUCKET_NAME;
     const { wikibase_id, classifier_id } = await params;
     const key = `${wikibase_id}/${classifier_id}/predictions.jsonl`;
-    console.log("Key:", key);
-    const command = new GetObjectCommand({ Bucket: bucket, Key: key });
-    const response = await s3Client.send(command);
-    const body = response.Body;
 
-    if (!body) {
-      throw new Error("No body in S3 response");
+    // Check cache first
+    const cacheKey = `predictions-${wikibase_id}-${classifier_id}`;
+    let allPredictions = cache.get(cacheKey);
+
+    if (!allPredictions) {
+      console.log(`Cache miss for predictions: ${key}, fetching from S3...`);
+
+      const s3Client = new S3Client({
+        region: process.env.AWS_REGION,
+        credentials: fromIni({
+          profile: process.env.AWS_PROFILE,
+        }),
+      });
+
+      const bucket = process.env.BUCKET_NAME;
+      const command = new GetObjectCommand({ Bucket: bucket, Key: key });
+      const response = await s3Client.send(command);
+      const body = response.Body;
+
+      if (!body) {
+        throw new Error("No body in S3 response");
+      }
+
+      const text = await body.transformToString();
+
+      // Parse JSONL data
+      const lines = text.split("\n").filter((line) => line.trim() !== "");
+      allPredictions = lines.map((line) => JSON.parse(line));
+
+      // Store in cache
+      cache.set(cacheKey, allPredictions);
+      console.log(`Predictions data cached successfully for: ${key}`);
+    } else {
+      console.log(`Cache hit for predictions: ${key}`);
     }
-
-    const text = await body.transformToString();
-
-    // Parse JSONL data
-    const lines = text.split("\n").filter((line) => line.trim() !== "");
-    const allPredictions = lines.map((line) => JSON.parse(line));
 
     // Store total unfiltered count
     const totalUnfiltered = allPredictions.length;
@@ -190,7 +205,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: paginatedPassages,
-      s3Uri: `s3://${bucket}/${key}`,
+      s3Uri: `s3://${process.env.BUCKET_NAME}/${key}`,
       pagination: {
         page,
         pageSize,
