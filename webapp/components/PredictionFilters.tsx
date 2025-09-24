@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Slider } from "@base-ui-components/react/slider";
-import { Select } from "@base-ui-components/react/select";
+import { useEffect, useRef, useState } from "react";
+
 import MaterialIcon from "@/components/MaterialIcon";
+import { Select } from "@base-ui-components/react/select";
+import { Slider } from "@base-ui-components/react/slider";
 
 export interface FilterState {
   translated?: boolean;
@@ -123,9 +124,10 @@ export default function PredictionFilters({
     };
   }, []);
 
-  const activeFilterCount = Object.keys(localFilters).filter(
-    (key) => localFilters[key as keyof FilterState] !== undefined,
-  ).length + (searchTerms ? 1 : 0); // Include search terms in count
+  const activeFilterCount =
+    Object.keys(localFilters).filter(
+      (key) => localFilters[key as keyof FilterState] !== undefined,
+    ).length + (searchTerms ? 1 : 0); // Include search terms in count
 
   return (
     <div>
@@ -133,7 +135,7 @@ export default function PredictionFilters({
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-2 text-sm font-medium text-secondary transition-colors hover:text-primary"
+            className="text-secondary hover:text-primary flex items-center gap-2 text-sm font-medium transition-colors"
           >
             <MaterialIcon
               name={isExpanded ? "expand_more" : "chevron_right"}
@@ -148,11 +150,13 @@ export default function PredictionFilters({
             </span>
           )}
           {activeFilterCount > 0 && totalUnfiltered > 0 && (
-            <div className="flex items-center gap-2 text-xs text-secondary">
-              <div className="h-1.5 w-24 bg-bg-tertiary rounded-full overflow-hidden">
+            <div className="text-secondary flex items-center gap-2 text-xs">
+              <div className="h-1.5 w-24 overflow-hidden rounded-full bg-bg-tertiary">
                 <div
-                  className="h-full bg-text-primary rounded-full transition-all duration-300"
-                  style={{ width: `${(totalFiltered / totalUnfiltered) * 100}%` }}
+                  className="h-full rounded-full bg-text-primary transition-all duration-300"
+                  style={{
+                    width: `${(totalFiltered / totalUnfiltered) * 100}%`,
+                  }}
                 />
               </div>
               <span className="font-mono">
@@ -164,7 +168,7 @@ export default function PredictionFilters({
         {activeFilterCount > 0 && (
           <button
             onClick={clearFilters}
-            className="text-sm text-secondary transition-colors hover:text-primary"
+            className="text-secondary hover:text-primary text-sm transition-colors"
           >
             Clear all
           </button>
@@ -175,7 +179,7 @@ export default function PredictionFilters({
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
           {/* Has Predictions Filter */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-secondary">
+            <label className="text-secondary mb-2 block text-sm font-medium">
               Show Predictions
             </label>
             <Select.Root
@@ -184,7 +188,11 @@ export default function PredictionFilters({
                 { value: "true", label: "With predictions only" },
                 { value: "false", label: "Without predictions only" },
               ]}
-              value={localFilters.has_predictions === undefined ? "" : localFilters.has_predictions.toString()}
+              value={
+                localFilters.has_predictions === undefined
+                  ? ""
+                  : localFilters.has_predictions.toString()
+              }
               onValueChange={(value) => {
                 immediateUpdateFilter(
                   "has_predictions",
@@ -192,10 +200,14 @@ export default function PredictionFilters({
                 );
               }}
             >
-              <Select.Trigger className="input w-full text-sm flex items-center justify-between">
+              <Select.Trigger className="input flex w-full items-center justify-between text-sm">
                 <Select.Value />
                 <Select.Icon>
-                  <MaterialIcon name="expand_more" size={16} className="text-secondary" />
+                  <MaterialIcon
+                    name="expand_more"
+                    size={16}
+                    className="text-secondary"
+                  />
                 </Select.Icon>
               </Select.Trigger>
               <Select.Portal>
@@ -203,21 +215,23 @@ export default function PredictionFilters({
                   <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
                     <Select.Item
                       value=""
-                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
                     >
                       <Select.ItemText>All passages</Select.ItemText>
                     </Select.Item>
                     <Select.Item
                       value="true"
-                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
                     >
                       <Select.ItemText>With predictions only</Select.ItemText>
                     </Select.Item>
                     <Select.Item
                       value="false"
-                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
                     >
-                      <Select.ItemText>Without predictions only</Select.ItemText>
+                      <Select.ItemText>
+                        Without predictions only
+                      </Select.ItemText>
                     </Select.Item>
                   </Select.Popup>
                 </Select.Positioner>
@@ -226,7 +240,7 @@ export default function PredictionFilters({
           </div>
           {/* Translation Status */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-secondary">
+            <label className="text-secondary mb-2 block text-sm font-medium">
               Translation Status
             </label>
             <Select.Root
@@ -235,7 +249,11 @@ export default function PredictionFilters({
                 { value: "true", label: "Translated" },
                 { value: "false", label: "Original" },
               ]}
-              value={localFilters.translated === undefined ? "" : localFilters.translated.toString()}
+              value={
+                localFilters.translated === undefined
+                  ? ""
+                  : localFilters.translated.toString()
+              }
               onValueChange={(value) => {
                 immediateUpdateFilter(
                   "translated",
@@ -243,10 +261,14 @@ export default function PredictionFilters({
                 );
               }}
             >
-              <Select.Trigger className="input w-full text-sm flex items-center justify-between">
+              <Select.Trigger className="input flex w-full items-center justify-between text-sm">
                 <Select.Value />
                 <Select.Icon>
-                  <MaterialIcon name="expand_more" size={16} className="text-secondary" />
+                  <MaterialIcon
+                    name="expand_more"
+                    size={16}
+                    className="text-secondary"
+                  />
                 </Select.Icon>
               </Select.Trigger>
               <Select.Portal>
@@ -254,19 +276,19 @@ export default function PredictionFilters({
                   <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
                     <Select.Item
                       value=""
-                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
                     >
                       <Select.ItemText>All</Select.ItemText>
                     </Select.Item>
                     <Select.Item
                       value="true"
-                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
                     >
                       <Select.ItemText>Translated</Select.ItemText>
                     </Select.Item>
                     <Select.Item
                       value="false"
-                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
                     >
                       <Select.ItemText>Original</Select.ItemText>
                     </Select.Item>
@@ -278,7 +300,7 @@ export default function PredictionFilters({
 
           {/* Corpus Type */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-secondary">
+            <label className="text-secondary mb-2 block text-sm font-medium">
               Corpus Type
             </label>
             <Select.Root
@@ -290,12 +312,18 @@ export default function PredictionFilters({
                 })),
               ]}
               value={localFilters.corpus_type || ""}
-              onValueChange={(value) => immediateUpdateFilter("corpus_type", value)}
+              onValueChange={(value) =>
+                immediateUpdateFilter("corpus_type", value)
+              }
             >
-              <Select.Trigger className="input w-full text-sm flex items-center justify-between">
+              <Select.Trigger className="input flex w-full items-center justify-between text-sm">
                 <Select.Value />
                 <Select.Icon>
-                  <MaterialIcon name="expand_more" size={16} className="text-secondary" />
+                  <MaterialIcon
+                    name="expand_more"
+                    size={16}
+                    className="text-secondary"
+                  />
                 </Select.Icon>
               </Select.Trigger>
               <Select.Portal>
@@ -303,7 +331,7 @@ export default function PredictionFilters({
                   <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
                     <Select.Item
                       value=""
-                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
                     >
                       <Select.ItemText>All types</Select.ItemText>
                     </Select.Item>
@@ -311,7 +339,7 @@ export default function PredictionFilters({
                       <Select.Item
                         key={type}
                         value={type}
-                        className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                        className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
                       >
                         <Select.ItemText>{type}</Select.ItemText>
                       </Select.Item>
@@ -324,7 +352,7 @@ export default function PredictionFilters({
 
           {/* World Bank Region */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-secondary">
+            <label className="text-secondary mb-2 block text-sm font-medium">
               Region
             </label>
             <Select.Root
@@ -336,12 +364,18 @@ export default function PredictionFilters({
                 })),
               ]}
               value={localFilters.world_bank_region || ""}
-              onValueChange={(value) => immediateUpdateFilter("world_bank_region", value)}
+              onValueChange={(value) =>
+                immediateUpdateFilter("world_bank_region", value)
+              }
             >
-              <Select.Trigger className="input w-full text-sm flex items-center justify-between">
+              <Select.Trigger className="input flex w-full items-center justify-between text-sm">
                 <Select.Value />
                 <Select.Icon>
-                  <MaterialIcon name="expand_more" size={16} className="text-secondary" />
+                  <MaterialIcon
+                    name="expand_more"
+                    size={16}
+                    className="text-secondary"
+                  />
                 </Select.Icon>
               </Select.Trigger>
               <Select.Portal>
@@ -349,7 +383,7 @@ export default function PredictionFilters({
                   <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
                     <Select.Item
                       value=""
-                      className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
                     >
                       <Select.ItemText>All regions</Select.ItemText>
                     </Select.Item>
@@ -357,7 +391,7 @@ export default function PredictionFilters({
                       <Select.Item
                         key={region}
                         value={region}
-                        className="relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                        className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
                       >
                         <Select.ItemText>{region}</Select.ItemText>
                       </Select.Item>
@@ -370,7 +404,7 @@ export default function PredictionFilters({
 
           {/* Publication Year Range */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-secondary">
+            <label className="text-secondary mb-2 block text-sm font-medium">
               Publication Year Range
             </label>
             <div className="px-2">
@@ -383,27 +417,29 @@ export default function PredictionFilters({
                 ]}
                 onValueChange={(value: number[]) => {
                   debouncedUpdateMultipleFilters({
-                    publication_year_start: value[0] === 1990 ? undefined : value[0],
-                    publication_year_end: value[1] === 2030 ? undefined : value[1],
+                    publication_year_start:
+                      value[0] === 1990 ? undefined : value[0],
+                    publication_year_end:
+                      value[1] === 2030 ? undefined : value[1],
                   });
                 }}
-                className="relative flex w-full touch-none select-none items-center"
+                className="relative flex w-full touch-none items-center select-none"
               >
                 <Slider.Control className="relative flex h-5 w-full cursor-pointer items-center">
                   <Slider.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-bg-tertiary">
-                    <Slider.Indicator className="absolute h-full bg-text-primary" />
+                    <Slider.Indicator className="absolute h-full bg-text-secondary" />
                   </Slider.Track>
                   <Slider.Thumb
                     index={0}
-                    className="block h-5 w-5 rounded-full border-2 border-text-primary bg-bg-primary shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                    className="block h-5 w-5 rounded-full border-2 border-text-secondary bg-bg-primary shadow transition-colors focus-visible:ring-2 focus-visible:ring-text-secondary focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
                   />
                   <Slider.Thumb
                     index={1}
-                    className="block h-5 w-5 rounded-full border-2 border-text-primary bg-bg-primary shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                    className="block h-5 w-5 rounded-full border-2 border-text-secondary bg-bg-primary shadow transition-colors focus-visible:ring-2 focus-visible:ring-text-secondary focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
                   />
                 </Slider.Control>
               </Slider.Root>
-              <div className="mt-2 flex justify-between text-xs text-secondary">
+              <div className="text-primary mt-2 flex justify-between text-xs">
                 <span>{localFilters.publication_year_start || 1990}</span>
                 <span>{localFilters.publication_year_end || 2030}</span>
               </div>
@@ -412,13 +448,15 @@ export default function PredictionFilters({
 
           {/* Document ID Search */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-secondary">
+            <label className="text-secondary mb-2 block text-sm font-medium">
               Document ID
             </label>
             <input
               type="text"
               value={localFilters.document_id || ""}
-              onChange={(e) => debouncedUpdateFilter("document_id", e.target.value)}
+              onChange={(e) =>
+                debouncedUpdateFilter("document_id", e.target.value)
+              }
               className="input w-full text-sm"
               placeholder="e.g. CCLW.executive.10310.4923"
             />

@@ -9,6 +9,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import PaginationControls from "@/components/PaginationControls";
 import Breadcrumb from "@/components/Breadcrumb";
 import ConceptHeader from "@/components/ConceptHeader";
+import LabelledPassage from "@/components/LabelledPassage";
 import MaterialIcon from "@/components/MaterialIcon";
 import SearchBox from "@/components/SearchBox";
 
@@ -37,16 +38,6 @@ export default function PredictionsPageClient({
 
 
 
-  // Function to render text with highlights
-  const renderPassageText = (prediction: Prediction) => {
-    // Use marked_up_text directly - pipeline now includes proper CSS classes
-    if (prediction.marked_up_text) {
-      return <span dangerouslySetInnerHTML={{ __html: prediction.marked_up_text }} />;
-    }
-
-    // Fallback to plain text if no marked_up_text available
-    return <span>{prediction.text}</span>;
-  };
 
   // Concept metadata
   const [conceptData, setConceptData] = useState<{
@@ -349,43 +340,15 @@ export default function PredictionsPageClient({
         {/* Passages container */}
         {!loading && !error && predictions.length > 0 && (
           <div id="passages-container" className="space-y-4">
-            {predictions.map((prediction, index) => {
-              const metadata = prediction.metadata;
-              const pubDate = new Date(
-                metadata["document_metadata.publication_ts"],
-              );
-
-              return (
-                <div
-                  key={index}
-                  className="passage-card card p-6 transition duration-300 hover:shadow-md"
-                >
-                  <div className="mb-4 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded bg-bg-tertiary px-2 py-1 text-text-primary">
-                      {metadata["document_metadata.corpus_type_name"]}
-                    </span>
-                    <span className="rounded bg-bg-tertiary px-2 py-1 text-text-primary">
-                      {metadata.world_bank_region}
-                    </span>
-                    <span className="rounded bg-bg-tertiary px-2 py-1 text-text-primary">
-                      {metadata.translated === "True"
-                        ? "Translated"
-                        : "Original"}
-                    </span>
-                    <span className="rounded bg-bg-tertiary px-2 py-1 text-text-primary">
-                      {pubDate.getFullYear()}
-                    </span>
-                  </div>
-                  <div className="text-secondary mb-2 text-sm">
-                    {metadata.document_id} | Page{" "}
-                    {metadata["text_block.page_number"]}
-                  </div>
-                  <div className="passage-text text-primary leading-relaxed">
-                    {renderPassageText(prediction)}
-                  </div>
-                </div>
-              );
-            })}
+            {predictions.map((prediction, index) => (
+              <LabelledPassage
+                key={index}
+                text={prediction.text}
+                marked_up_text={prediction.marked_up_text}
+                spans={prediction.spans}
+                metadata={prediction.metadata}
+              />
+            ))}
           </div>
         )}
 
