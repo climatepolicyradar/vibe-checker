@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+@import "material-symbols/rounded.css";
 
 /* Semantic color system that automatically adapts to light/dark themes */
 :root {
@@ -186,6 +187,15 @@ body {
 /* Input utilities */
 .input {
   @apply rounded-md border border-border-secondary bg-bg-primary px-3 py-2 text-text-primary transition-colors hover:border-border-tertiary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary focus:outline-none;
+}
+
+/* Material Symbols configuration */
+.material-symbols-rounded {
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 700,
+    'GRAD' 0,
+    'opsz' 24;
 }
 
 /* Prediction highlighting */

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Slider } from "@base-ui-components/react/slider";
 import { Select } from "@base-ui-components/react/select";
+import MaterialIcon from "@/components/MaterialIcon";
 
 export interface FilterState {
   translated?: boolean;
@@ -134,21 +135,11 @@ export default function PredictionFilters({
             onClick={() => setIsExpanded(!isExpanded)}
             className="flex items-center gap-2 text-sm font-medium text-secondary transition-colors hover:text-primary"
           >
-            <svg
-              className={`h-4 w-4 transition-transform ${
-                isExpanded ? "rotate-90" : ""
-              }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
+            <MaterialIcon
+              name={isExpanded ? "expand_more" : "chevron_right"}
+              size={16}
+              className="transition-transform"
+            />
             Filters
           </button>
           {activeFilterCount > 0 && (
@@ -204,19 +195,7 @@ export default function PredictionFilters({
               <Select.Trigger className="input w-full text-sm flex items-center justify-between">
                 <Select.Value />
                 <Select.Icon>
-                  <svg
-                    className="h-4 w-4 text-secondary"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
+                  <MaterialIcon name="expand_more" size={16} className="text-secondary" />
                 </Select.Icon>
               </Select.Trigger>
               <Select.Portal>
@@ -267,19 +246,7 @@ export default function PredictionFilters({
               <Select.Trigger className="input w-full text-sm flex items-center justify-between">
                 <Select.Value />
                 <Select.Icon>
-                  <svg
-                    className="h-4 w-4 text-secondary"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
+                  <MaterialIcon name="expand_more" size={16} className="text-secondary" />
                 </Select.Icon>
               </Select.Trigger>
               <Select.Portal>
@@ -328,19 +295,7 @@ export default function PredictionFilters({
               <Select.Trigger className="input w-full text-sm flex items-center justify-between">
                 <Select.Value />
                 <Select.Icon>
-                  <svg
-                    className="h-4 w-4 text-secondary"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
+                  <MaterialIcon name="expand_more" size={16} className="text-secondary" />
                 </Select.Icon>
               </Select.Trigger>
               <Select.Portal>
@@ -386,19 +341,7 @@ export default function PredictionFilters({
               <Select.Trigger className="input w-full text-sm flex items-center justify-between">
                 <Select.Value />
                 <Select.Icon>
-                  <svg
-                    className="h-4 w-4 text-secondary"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
+                  <MaterialIcon name="expand_more" size={16} className="text-secondary" />
                 </Select.Icon>
               </Select.Trigger>
               <Select.Portal>

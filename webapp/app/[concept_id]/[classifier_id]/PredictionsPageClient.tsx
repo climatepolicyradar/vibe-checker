@@ -8,6 +8,9 @@ import Link from "next/link";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import PaginationControls from "@/components/PaginationControls";
 import Breadcrumb from "@/components/Breadcrumb";
+import MaterialIcon from "@/components/MaterialIcon";
+import ExternalLink from "@/components/ExternalLink";
+import SearchBox from "@/components/SearchBox";
 
 interface PredictionsPageClientProps {
   conceptId: string;
@@ -32,9 +35,6 @@ export default function PredictionsPageClient({
   );
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
 
-  // Search state for debounced input
-  const [localSearchTerms, setLocalSearchTerms] = useState<string>("");
-  const searchDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 
   // Function to render text with highlights
@@ -150,45 +150,13 @@ export default function PredictionsPageClient({
     [conceptId, classifierId, router],
   );
 
-  // Search-specific update function
-  const updateSearch = useCallback(
+  // Search handler
+  const handleSearchChange = useCallback(
     (newSearchTerms: string) => {
-      updateURL(urlState.filters, 1, newSearchTerms); // Reset to page 1 on search
+      updateURL(urlState.filters, 1, newSearchTerms || undefined); // Reset to page 1 on search
     },
     [updateURL, urlState.filters],
   );
-
-  // Debounced search handler
-  const handleSearchChange = useCallback(
-    (value: string) => {
-      setLocalSearchTerms(value);
-
-      // Clear existing timeout
-      if (searchDebounceTimeoutRef.current) {
-        clearTimeout(searchDebounceTimeoutRef.current);
-      }
-
-      // Set new timeout for search update
-      searchDebounceTimeoutRef.current = setTimeout(() => {
-        updateSearch(value || "");
-      }, 500); // Longer debounce for search
-    },
-    [updateSearch],
-  );
-
-  // Update local search state when URL changes
-  useEffect(() => {
-    setLocalSearchTerms(urlState.searchTerms || "");
-  }, [urlState.searchTerms]);
-
-  // Cleanup search timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (searchDebounceTimeoutRef.current) {
-        clearTimeout(searchDebounceTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Fetch concept metadata first
   useEffect(() => {
@@ -340,14 +308,12 @@ export default function PredictionsPageClient({
               )}
 
               <div className="mt-3">
-                <a
+                <ExternalLink
                   href={`https://climatepolicyradar.wikibase.cloud/wiki/Item:${conceptId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-secondary hover:text-primary text-sm transition-colors"
+                  className="text-secondary hover:text-primary text-sm"
                 >
-                  View in Wikibase →
-                </a>
+                  View in Wikibase
+                </ExternalLink>
               </div>
             </div>
 
@@ -355,40 +321,12 @@ export default function PredictionsPageClient({
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               {/* Search Input */}
               <div className="flex-1 max-w-md">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={localSearchTerms}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    className="input w-full pl-10 pr-4 py-2 text-sm"
-                    placeholder="Search in passage text..."
-                  />
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg
-                      className="h-4 w-4 text-secondary"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                  {localSearchTerms && (
-                    <button
-                      onClick={() => handleSearchChange("")}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-secondary hover:text-primary"
-                    >
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                <SearchBox
+                  value={urlState.searchTerms || ""}
+                  onChange={handleSearchChange}
+                  placeholder="Search in passage text..."
+                  debounceMs={500}
+                />
               </div>
 
               {/* Download Button */}
@@ -398,22 +336,7 @@ export default function PredictionsPageClient({
                   title="Download JSON"
                   className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="feather feather-download"
-                  >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="7 10 12 15 17 10"></polyline>
-                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                  </svg>
+                  <MaterialIcon name="download" size={16} />
                   Download JSON
                 </a>
               </div>

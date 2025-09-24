@@ -15,6 +15,7 @@
     "@base-ui-components/react": "^1.0.0-beta.3",
     "@tailwindcss/typography": "^0.5.18",
     "js-yaml": "^4.1.0",
+    "material-symbols": "^0.36.0",
     "next": "15.5.2",
     "react": "19.1.0",
     "react-dom": "19.1.0"

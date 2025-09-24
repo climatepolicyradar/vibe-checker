@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 import Card from "../components/Card";
 import ErrorMessage from "../components/ErrorMessage";
-import Input from "../components/Input";
 import LoadingSpinner from "../components/LoadingSpinner";
+import SearchBox from "../components/SearchBox";
 
 interface ConceptData {
   wikibase_id: string;
@@ -90,29 +90,11 @@ export default function Home() {
             </div>
           </div>
           <div className="mt-4 w-full max-w-sm md:max-w-md">
-            <Input
-              type="text"
+            <SearchBox
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={setSearchTerm}
               placeholder="Search for a concept"
-              hasIcon
-              icon={
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth="2"
-                  stroke="currentColor"
-                  className="h-4 w-4 text-secondary"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
-                  />
-                </svg>
-              }
-              className="h-10"
+              debounceMs={200}
             />
           </div>
         </div>

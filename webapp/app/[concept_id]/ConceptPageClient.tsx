@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Breadcrumb from "@/components/Breadcrumb";
+import ExternalLink from "@/components/ExternalLink";
+import MaterialIcon from "@/components/MaterialIcon";
 
 interface ConceptPageClientProps {
   conceptId: string;
@@ -54,13 +56,12 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
               {conceptId}
             </h1>
             <div>
-              <a
-                href="#"
-                target="_blank"
-                className="text-sm text-secondary transition-colors hover:text-primary"
+              <ExternalLink
+                href={`https://climatepolicyradar.wikibase.cloud/wiki/Item:${conceptId}`}
+                className="text-sm text-secondary hover:text-primary"
               >
-                View in Wikibase →
-              </a>
+                View in Wikibase
+              </ExternalLink>
             </div>
           </div>
         </div>
@@ -94,18 +95,7 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
                     <span className="font-medium text-primary">
                       {classifierId}
                     </span>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 text-secondary"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
+                    <MaterialIcon name="chevron_right" size={20} className="text-secondary" />
                   </div>
                 </Link>
               ))}

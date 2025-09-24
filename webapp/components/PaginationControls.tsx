@@ -1,3 +1,5 @@
+import MaterialIcon from "@/components/MaterialIcon";
+
 interface PaginationControlsProps {
   page: number;
   totalFiltered: number;
@@ -24,12 +26,13 @@ export default function PaginationControls({
         <button
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={!hasPreviousPage}
-          className={`${
+          className={`inline-flex items-center gap-1 text-sm transition-colors ${
             hasPreviousPage
-              ? "btn-primary"
-              : "btn-secondary cursor-not-allowed opacity-50"
+              ? "text-primary hover:text-accent-primary cursor-pointer"
+              : "text-tertiary cursor-not-allowed opacity-50"
           }`}
         >
+          <MaterialIcon name="chevron_left" size={20} />
           Previous
         </button>
 
@@ -43,13 +46,14 @@ export default function PaginationControls({
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={!hasNextPage}
-          className={`${
+          className={`inline-flex items-center gap-1 text-sm transition-colors ${
             hasNextPage
-              ? "btn-primary"
-              : "btn-secondary cursor-not-allowed opacity-50"
+              ? "text-primary hover:text-accent-primary cursor-pointer"
+              : "text-tertiary cursor-not-allowed opacity-50"
           }`}
         >
           Next
+          <MaterialIcon name="chevron_right" size={20} />
         </button>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import MaterialIcon from "@/components/MaterialIcon";
 
 interface BreadcrumbProps {
   href: string;
@@ -12,19 +13,7 @@ export default function Breadcrumb({ href, children }: BreadcrumbProps) {
         href={href}
         className="inline-flex items-center gap-2 text-sm text-secondary transition-colors hover:text-primary"
       >
-        <svg
-          className="h-4 w-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M10 19l-7-7m0 0l7-7m-7 7h18"
-          />
-        </svg>
+        <MaterialIcon name="arrow_back" size={16} />
         {children}
       </Link>
     </div>
