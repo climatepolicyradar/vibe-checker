@@ -134,12 +134,22 @@ export async function GET(
         return false;
       }
 
-      // Text search filter
+      // Text search filter with regex support
       if (filters.search) {
-        const searchTerm = filters.search.toLowerCase();
-        const text = prediction.text.toLowerCase();
-        if (!text.includes(searchTerm)) {
-          return false;
+        try {
+          // Create case-insensitive regex from search terms
+          const searchRegex = new RegExp(filters.search.trim(), "i");
+          const text = prediction.text;
+          if (!searchRegex.test(text)) {
+            return false;
+          }
+        } catch (error) {
+          // If regex is invalid, fall back to simple string search
+          const searchTerm = filters.search.toLowerCase().trim();
+          const text = prediction.text.toLowerCase();
+          if (!text.includes(searchTerm)) {
+            return false;
+          }
         }
       }
 

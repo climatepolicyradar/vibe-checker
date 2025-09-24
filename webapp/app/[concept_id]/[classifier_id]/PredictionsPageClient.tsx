@@ -1,7 +1,7 @@
 "use client";
 
 import PredictionFilters, { FilterState } from "@/components/PredictionFilters";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import Link from "next/link";
@@ -30,6 +30,10 @@ export default function PredictionsPageClient({
     [],
   );
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
+
+  // Search state for debounced input
+  const [localSearchTerms, setLocalSearchTerms] = useState<string>("");
+  const searchDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Concept metadata
   const [conceptData, setConceptData] = useState<{
@@ -74,12 +78,13 @@ export default function PredictionsPageClient({
         : undefined,
       document_id: searchParams.get("document_id") || undefined,
     };
-    return { page, filters };
+    const searchTerms = searchParams.get("search") || undefined;
+    return { page, filters, searchTerms };
   }, [searchParams]);
 
   // Memoized URL update function
   const updateURL = useCallback(
-    (newFilters: FilterState, newPage: number) => {
+    (newFilters: FilterState, newPage: number, searchTerms?: string) => {
       const params = new URLSearchParams();
 
       // Add page
@@ -112,6 +117,9 @@ export default function PredictionsPageClient({
       if (newFilters.document_id) {
         params.set("document_id", newFilters.document_id);
       }
+      if (searchTerms) {
+        params.set("search", searchTerms);
+      }
 
       const newURL = params.toString()
         ? `/${conceptId}/${classifierId}?${params.toString()}`
@@ -121,6 +129,46 @@ export default function PredictionsPageClient({
     },
     [conceptId, classifierId, router],
   );
+
+  // Search-specific update function
+  const updateSearch = useCallback(
+    (newSearchTerms: string) => {
+      updateURL(urlState.filters, 1, newSearchTerms); // Reset to page 1 on search
+    },
+    [updateURL, urlState.filters],
+  );
+
+  // Debounced search handler
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setLocalSearchTerms(value);
+
+      // Clear existing timeout
+      if (searchDebounceTimeoutRef.current) {
+        clearTimeout(searchDebounceTimeoutRef.current);
+      }
+
+      // Set new timeout for search update
+      searchDebounceTimeoutRef.current = setTimeout(() => {
+        updateSearch(value || "");
+      }, 500); // Longer debounce for search
+    },
+    [updateSearch],
+  );
+
+  // Update local search state when URL changes
+  useEffect(() => {
+    setLocalSearchTerms(urlState.searchTerms || "");
+  }, [urlState.searchTerms]);
+
+  // Cleanup search timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceTimeoutRef.current) {
+        clearTimeout(searchDebounceTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Fetch concept metadata first
   useEffect(() => {
@@ -160,10 +208,13 @@ export default function PredictionsPageClient({
 
       setLoading(true);
       try {
-        const { page, filters } = urlState;
+        const { page, filters, searchTerms } = urlState;
 
         const params = new URLSearchParams();
         params.set("page", page.toString());
+        if (searchTerms) {
+          params.set("search", searchTerms);
+        }
 
         // Add filter parameters
         Object.entries(filters).forEach(([key, value]) => {
@@ -221,16 +272,16 @@ export default function PredictionsPageClient({
   const handleFilterChange = useCallback(
     (newFilters: FilterState) => {
       const newPage = 1; // Reset to first page when filters change
-      updateURL(newFilters, newPage);
+      updateURL(newFilters, newPage, urlState.searchTerms);
     },
-    [updateURL],
+    [updateURL, urlState.searchTerms],
   );
 
   const handlePageChange = useCallback(
     (newPage: number) => {
-      updateURL(urlState.filters, newPage);
+      updateURL(urlState.filters, newPage, urlState.searchTerms);
     },
-    [updateURL, urlState.filters],
+    [updateURL, urlState.filters, urlState.searchTerms],
   );
 
   return (
@@ -278,30 +329,72 @@ export default function PredictionsPageClient({
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <a
-                href="#"
-                title="Download JSON"
-                className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="feather feather-download"
+            {/* Search and Actions */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              {/* Search Input */}
+              <div className="flex-1 max-w-md">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={localSearchTerms}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="input w-full pl-10 pr-4 py-2 text-sm"
+                    placeholder="Search in passage text..."
+                  />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg
+                      className="h-4 w-4 text-secondary"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                  {localSearchTerms && (
+                    <button
+                      onClick={() => handleSearchChange("")}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-secondary hover:text-primary"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Download Button */}
+              <div className="flex items-center gap-4">
+                <a
+                  href="#"
+                  title="Download JSON"
+                  className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
                 >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                Download JSON
-              </a>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="feather feather-download"
+                  >
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  Download JSON
+                </a>
+              </div>
             </div>
 
             {/* Filters */}
@@ -312,6 +405,7 @@ export default function PredictionsPageClient({
               availableRegions={availableRegions}
               totalFiltered={totalFiltered}
               totalUnfiltered={totalUnfiltered}
+              searchTerms={urlState.searchTerms}
             />
           </div>
         </div>

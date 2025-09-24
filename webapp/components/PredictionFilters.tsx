@@ -22,6 +22,7 @@ interface PredictionFiltersProps {
   availableRegions: string[];
   totalFiltered?: number;
   totalUnfiltered?: number;
+  searchTerms?: string;
 }
 
 export default function PredictionFilters({
@@ -31,6 +32,7 @@ export default function PredictionFilters({
   availableRegions,
   totalFiltered = 0,
   totalUnfiltered = 0,
+  searchTerms,
 }: PredictionFiltersProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -121,7 +123,7 @@ export default function PredictionFilters({
 
   const activeFilterCount = Object.keys(localFilters).filter(
     (key) => localFilters[key as keyof FilterState] !== undefined,
-  ).length;
+  ).length + (searchTerms ? 1 : 0); // Include search terms in count
 
   return (
     <div>
