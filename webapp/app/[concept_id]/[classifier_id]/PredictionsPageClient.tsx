@@ -35,6 +35,18 @@ export default function PredictionsPageClient({
   const [localSearchTerms, setLocalSearchTerms] = useState<string>("");
   const searchDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+
+  // Function to render text with highlights
+  const renderPassageText = (prediction: Prediction) => {
+    // Use marked_up_text directly - pipeline now includes proper CSS classes
+    if (prediction.marked_up_text) {
+      return <span dangerouslySetInnerHTML={{ __html: prediction.marked_up_text }} />;
+    }
+
+    // Fallback to plain text if no marked_up_text available
+    return <span>{prediction.text}</span>;
+  };
+
   // Concept metadata
   const [conceptData, setConceptData] = useState<{
     preferred_label?: string;
@@ -43,6 +55,7 @@ export default function PredictionsPageClient({
 
   interface Prediction {
     text: string;
+    marked_up_text?: string; // HTML with <span> tags for highlighting
     spans?: Array<{ start: number; end: number; label: string }>;
     metadata: {
       "text_block.text_block_id": string;
@@ -467,7 +480,7 @@ export default function PredictionsPageClient({
                     {metadata["text_block.page_number"]}
                   </div>
                   <div className="passage-text text-primary leading-relaxed">
-                    {prediction.text}
+                    {renderPassageText(prediction)}
                   </div>
                 </div>
               );

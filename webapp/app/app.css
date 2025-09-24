@@ -187,3 +187,36 @@ body {
 .input {
   @apply rounded-md border border-border-secondary bg-bg-primary px-3 py-2 text-text-primary transition-colors hover:border-border-tertiary focus:border-accent-primary focus:ring-1 focus:ring-accent-primary focus:outline-none;
 }
+
+/* Prediction highlighting */
+.passage-text {
+  line-height: 1.6;
+}
+
+.passage-text .prediction-highlight {
+  @apply bg-accent-primary/15 rounded px-1 py-0.5 font-medium transition-colors hover:bg-accent-primary/25;
+}
+
+/* Ensure highlighting works even if CSS processing fails */
+.prediction-highlight {
+  background-color: rgba(14, 165, 233, 0.15) !important;
+  border-radius: 0.25rem !important;
+  padding: 0.125rem 0.25rem !important;
+  font-weight: 500 !important;
+  transition: background-color 150ms ease !important;
+}
+
+.prediction-highlight:hover {
+  background-color: rgba(14, 165, 233, 0.25) !important;
+}
+
+/* Dark mode fallback */
+@media (prefers-color-scheme: dark) {
+  .prediction-highlight {
+    background-color: rgba(245, 158, 11, 0.2) !important;
+  }
+
+  .prediction-highlight:hover {
+    background-color: rgba(245, 158, 11, 0.3) !important;
+  }
+}
