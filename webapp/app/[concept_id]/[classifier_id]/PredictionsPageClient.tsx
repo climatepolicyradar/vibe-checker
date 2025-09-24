@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import PaginationControls from "@/components/PaginationControls";
+import Breadcrumb from "@/components/Breadcrumb";
 
 interface PredictionsPageClientProps {
   conceptId: string;
@@ -306,6 +307,8 @@ export default function PredictionsPageClient({
   return (
     <div className="page-container">
       <div className="mx-auto max-w-7xl">
+        <Breadcrumb href={`/${conceptId}`}>Back to classifiers</Breadcrumb>
+
         <div className="card mb-6 p-6">
           <div className="flex flex-col gap-4">
             <div>
