@@ -11,7 +11,7 @@ export default function ErrorMessage({
 }: ErrorMessageProps) {
   return (
     <Card variant="error" className={`p-4 ${className}`}>
-      <div className="text-neutral-900 dark:text-neutral-100">
+      <div className="text-red-900 dark:text-red-100">
         <strong className="font-medium">Error:</strong> {error}
       </div>
     </Card>

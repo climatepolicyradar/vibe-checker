@@ -150,8 +150,15 @@ ec2.RouteTableAssociation(
 alb_security_group = ec2.SecurityGroup(
     f"{app_name}-alb-sg",
     vpc_id=vpc.id,
-    description="Allow HTTPS inbound traffic",
+    description="Allow HTTP and HTTPS inbound traffic",
     ingress=[
+        ec2.SecurityGroupIngressArgs(
+            protocol="tcp",
+            from_port=80,
+            to_port=80,
+            cidr_blocks=["0.0.0.0/0"],
+            description="HTTP",
+        ),
         ec2.SecurityGroupIngressArgs(
             protocol="tcp",
             from_port=443,
@@ -287,7 +294,25 @@ target_group = lb.TargetGroup(
     ),
 )
 
-# ALB listener
+# HTTP listener that redirects to HTTPS
+http_listener = lb.Listener(
+    f"{app_name}-http-listener",
+    load_balancer_arn=alb.arn,
+    port=80,
+    protocol="HTTP",
+    default_actions=[
+        lb.ListenerDefaultActionArgs(
+            type="redirect",
+            redirect=lb.ListenerDefaultActionRedirectArgs(
+                port="443",
+                protocol="HTTPS",
+                status_code="HTTP_301",
+            ),
+        )
+    ],
+)
+
+# HTTPS listener
 listener = lb.Listener(
     f"{app_name}-listener",
     load_balancer_arn=alb.arn,
@@ -349,7 +374,6 @@ task_definition = ecs.TaskDefinition(
                     "environment": [
                         {"name": "BUCKET_NAME", "value": args[0]},
                         {"name": "AWS_REGION", "value": aws_region},
-                        {"name": "AWS_PROFILE", "value": aws_profile},
                         {
                             "name": "NEXT_PUBLIC_CPR_APP_URL",
                             "value": "https://app.climatepolicyradar.org",

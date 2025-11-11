@@ -13,7 +13,7 @@ export default function Card({
 
   const variantClasses = {
     default: "border-border-primary bg-bg-primary",
-    error: "border-red-200 bg-red-50",
+    error: "border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950",
   };
 
   return (
