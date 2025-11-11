@@ -1,21 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import LoadingSpinner from "@/components/LoadingSpinner";
+
 import Breadcrumb from "@/components/Breadcrumb";
-import ConceptHeader from "@/components/ConceptHeader";
-import ErrorMessage from "@/components/ErrorMessage";
-import MaterialIcon from "@/components/MaterialIcon";
 import { ClassifierInfo } from "@/types/classifiers";
 import { ConceptData } from "@/types/concepts";
+import ConceptHeader from "@/components/ConceptHeader";
+import ErrorMessage from "@/components/ErrorMessage";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import MaterialIcon from "@/components/MaterialIcon";
 import { enrichConceptData } from "@/lib/concept-helpers";
+import { useRouter } from "next/navigation";
 
 interface ConceptPageClientProps {
   conceptId: string;
 }
 
-export default function ConceptPageClient({ conceptId }: ConceptPageClientProps) {
+export default function ConceptPageClient({
+  conceptId,
+}: ConceptPageClientProps) {
   const router = useRouter();
   const [classifiers, setClassifiers] = useState<ClassifierInfo[]>([]);
   const [conceptData, setConceptData] = useState<ConceptData | null>(null);
@@ -36,10 +39,12 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
 
         if (classifiersResult.success) {
           // Initialize classifiers with loading state
-          const classifierInfos: ClassifierInfo[] = classifiersResult.data.map((id: string) => ({
-            id,
-            loading: true,
-          }));
+          const classifierInfos: ClassifierInfo[] = classifiersResult.data.map(
+            (id: string) => ({
+              id,
+              loading: true,
+            }),
+          );
 
           // Fetch concept metadata from concepts list
           if (conceptsResult.success) {
@@ -57,7 +62,7 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
             classifierInfos.map(async (classifierInfo) => {
               try {
                 const classifierResponse = await fetch(
-                  `/api/concepts/${conceptId}/classifiers/${classifierInfo.id}`
+                  `/api/concepts/${conceptId}/classifiers/${classifierInfo.id}`,
                 );
                 const classifierResult = await classifierResponse.json();
                 return classifierResult.success ? classifierResult.data : null;
@@ -65,7 +70,7 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
                 console.error(err);
                 return null;
               }
-            })
+            }),
           );
 
           // Update classifiers with fetched data in a single batch
@@ -75,10 +80,12 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
               data: classifierDetails[i] || undefined,
               loading: false,
               error: classifierDetails[i] ? undefined : "Failed to load",
-            }))
+            })),
           );
         } else {
-          throw new Error(classifiersResult.error || "Failed to fetch classifiers");
+          throw new Error(
+            classifiersResult.error || "Failed to fetch classifiers",
+          );
         }
       } catch (err) {
         console.error("Error fetching classifiers:", err);
@@ -138,7 +145,9 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
                   <tr
                     key={classifier.id}
                     className="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700"
-                    onClick={() => router.push(`/${conceptId}/${classifier.id}`)}
+                    onClick={() =>
+                      router.push(`/${conceptId}/${classifier.id}`)
+                    }
                   >
                     <td className="border-b border-neutral-200 p-4 dark:border-neutral-600">
                       <div className="flex items-center gap-2">
@@ -149,7 +158,7 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
                           <MaterialIcon
                             name="progress_activity"
                             size={16}
-                            className="text-neutral-400 animate-spin"
+                            className="animate-spin text-neutral-400"
                           />
                         )}
                       </div>
@@ -160,17 +169,11 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
                           {classifier.data.name}
                         </p>
                       ) : classifier.error ? (
-                        <p className="text-sm text-red-600">
-                          Failed to load
-                        </p>
+                        <p className="text-sm text-red-600">Failed to load</p>
                       ) : classifier.loading ? (
-                        <p className="text-sm text-neutral-400">
-                          Loading...
-                        </p>
+                        <p className="text-sm text-neutral-400">Loading...</p>
                       ) : (
-                        <p className="text-sm text-neutral-400">
-                          —
-                        </p>
+                        <p className="text-sm text-neutral-400">—</p>
                       )}
                     </td>
                     <td className="border-b border-neutral-200 p-4 dark:border-neutral-600">
@@ -179,9 +182,7 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
                           {new Date(classifier.data.date).toLocaleDateString()}
                         </p>
                       ) : (
-                        <p className="text-sm text-neutral-400">
-                          —
-                        </p>
+                        <p className="text-sm text-neutral-400">—</p>
                       )}
                     </td>
                   </tr>
@@ -196,14 +197,11 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
             <div className="text-secondary">
               <p>
                 No classifiers found for concept{" "}
-                <span className="font-medium text-primary">
-                  {conceptId}
-                </span>
+                <span className="text-primary font-medium">{conceptId}</span>
               </p>
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

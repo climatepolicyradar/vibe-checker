@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 import Card from "../components/Card";
+import { ConceptData } from "@/types/concepts";
+import { DEBOUNCE } from "@/lib/constants";
 import ErrorMessage from "../components/ErrorMessage";
 import LoadingSpinner from "../components/LoadingSpinner";
 import SearchBox from "../components/SearchBox";
-import { ConceptData } from "@/types/concepts";
-import { DEBOUNCE } from "@/lib/constants";
 import { enrichConceptData } from "@/lib/concept-helpers";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const router = useRouter();
@@ -55,9 +55,7 @@ export default function Home() {
         concept.preferred_label
           ?.toLowerCase()
           .includes(searchTerm.toLowerCase()) ||
-        concept.wikibase_id
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
+        concept.wikibase_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         concept.description?.toLowerCase().includes(searchTerm.toLowerCase()),
     );
   }, [searchTerm, concepts]);
@@ -68,9 +66,7 @@ export default function Home() {
         <div className="mb-8">
           <div className="mb-4 md:mb-0 md:flex md:items-center md:justify-between">
             <div>
-              <h1 className="page-title">
-                Vibe Checker
-              </h1>
+              <h1 className="page-title">Vibe Checker</h1>
               <p className="page-subtitle">
                 Check predictions from candidate classifiers
               </p>

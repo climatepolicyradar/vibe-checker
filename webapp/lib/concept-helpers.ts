@@ -1,9 +1,9 @@
-import { ConceptData, YamlConcept } from "@/types/concepts";
+import { ConceptData, EnhancedConcept, YamlConcept } from "@/types/concepts";
 
 export function getConceptDefaults(
   concept: string | YamlConcept,
   conceptId: string,
-): Omit<ConceptData, "n_classifiers"> {
+): Omit<EnhancedConcept, "n_classifiers"> {
   return {
     wikibase_id: conceptId,
     preferred_label:
@@ -21,7 +21,7 @@ export function getConceptDefaults(
  * Enriches concept data with default values for missing fields.
  * Ensures all concepts have required fields with sensible defaults.
  */
-export function enrichConceptData(concept: ConceptData): ConceptData {
+export function enrichConceptData(concept: ConceptData): EnhancedConcept {
   return {
     wikibase_id: concept.wikibase_id,
     preferred_label: concept.preferred_label || concept.wikibase_id,

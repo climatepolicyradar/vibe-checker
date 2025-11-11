@@ -1,22 +1,22 @@
 "use client";
 
-import PredictionFilters from "@/components/PredictionFilters";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import Breadcrumb from "@/components/Breadcrumb";
 import { ConceptData } from "@/types/concepts";
-import { FilterState } from "@/types/filters";
 import ConceptHeader from "@/components/ConceptHeader";
-import { enrichConceptData } from "@/lib/concept-helpers";
 import { DEBOUNCE } from "@/lib/constants";
 import ErrorMessage from "@/components/ErrorMessage";
+import { FilterState } from "@/types/filters";
 import LabelledPassage from "@/components/LabelledPassage";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import MaterialIcon from "@/components/MaterialIcon";
 import PaginationControls from "@/components/PaginationControls";
 import { Prediction } from "@/types/predictions";
+import PredictionFilters from "@/components/PredictionFilters";
 import SearchBox from "@/components/SearchBox";
+import { enrichConceptData } from "@/lib/concept-helpers";
 
 interface PredictionsPageClientProps {
   conceptId: string;

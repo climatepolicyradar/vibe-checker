@@ -12,5 +12,12 @@ export interface ConceptData {
   n_classifiers?: number;
 }
 
-/** Alias for ConceptData with required fields - used when creating enriched concept objects */
-export type EnhancedConcept = Required<ConceptData>;
+/** Type for enriched concept data returned from the API - all fields have defaults applied */
+export type EnhancedConcept = Omit<
+  ConceptData,
+  "preferred_label" | "description" | "n_classifiers"
+> & {
+  preferred_label: string;
+  description: string;
+  n_classifiers: number;
+};
