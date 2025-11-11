@@ -2,14 +2,52 @@ import json
 import os
 
 import pulumi
-from pulumi_aws import cloudwatch, ec2, ecr, ecs, iam, lb, s3
+from pulumi_aws import (
+    acm,
+    cloudwatch,
+    ec2,
+    ecr,
+    ecs,
+    get_caller_identity,
+    get_region,
+    iam,
+    lb,
+    route53,
+    s3,
+)
+
+caller_identity = get_caller_identity()
+current_region = get_region()
+
+
+def get_ssm_parameter_arn(parameter_name):
+    return pulumi.Output.concat(
+        "arn:aws:ssm:",
+        current_region.region,
+        ":",
+        caller_identity.account_id,
+        ":parameter",
+        parameter_name,
+    )
+
 
 app_name = "cpr-vibe-checker"
 aws_region = os.getenv("AWS_REGION", "eu-west-1")
 aws_profile = os.getenv("AWS_PROFILE", "labs")
 
+# Look up the existing hosted zone for labs.climatepolicyradar.org
+hosted_zone = route53.get_zone(name="labs.climatepolicyradar.org")
+
+# Use existing wildcard certificate for *.labs.climatepolicyradar.org
+certificate = acm.get_certificate(
+    domain="*.labs.climatepolicyradar.org", statuses=["ISSUED"], most_recent=True
+)
+
 # s3 bucket for storing the data
 bucket = s3.Bucket(app_name)
+
+# Export the bucket name so it can be used as an environment variable
+pulumi.export("bucket_name", bucket.bucket)
 
 # ECR repository for storing the container image, and ECS cluster for running the webapp
 repository = ecr.Repository(app_name)
@@ -89,15 +127,8 @@ ec2.RouteTableAssociation(
 alb_security_group = ec2.SecurityGroup(
     f"{app_name}-alb-sg",
     vpc_id=vpc.id,
-    description="Allow HTTP and HTTPS inbound traffic",
+    description="Allow HTTPS inbound traffic",
     ingress=[
-        ec2.SecurityGroupIngressArgs(
-            protocol="tcp",
-            from_port=80,
-            to_port=80,
-            cidr_blocks=["0.0.0.0/0"],
-            description="HTTP",
-        ),
         ec2.SecurityGroupIngressArgs(
             protocol="tcp",
             from_port=443,
@@ -237,12 +268,29 @@ target_group = lb.TargetGroup(
 listener = lb.Listener(
     f"{app_name}-listener",
     load_balancer_arn=alb.arn,
-    port=80,
-    protocol="HTTP",
+    port=443,
+    protocol="HTTPS",
+    ssl_policy="ELBSecurityPolicy-TLS13-1-2-2021-06",
+    certificate_arn=certificate.arn,
     default_actions=[
         lb.ListenerDefaultActionArgs(
             type="forward",
             target_group_arn=target_group.arn,
+        )
+    ],
+)
+
+# Route53 A record for vibe-checker.labs.climatepolicyradar.org pointing to ALB
+route53_record = route53.Record(
+    f"{app_name}-dns",
+    zone_id=hosted_zone.zone_id,
+    name="vibe-checker",
+    type="A",
+    aliases=[
+        route53.RecordAliasArgs(
+            name=alb.dns_name,
+            zone_id=alb.zone_id,
+            evaluate_target_health=True,
         )
     ],
 )
@@ -276,8 +324,17 @@ task_definition = ecs.TaskDefinition(
                         {"containerPort": 80, "hostPort": 80, "protocol": "tcp"}
                     ],
                     "environment": [
-                        {"name": "S3_BUCKET_NAME", "value": args[0]},
+                        {"name": "BUCKET_NAME", "value": args[0]},
                         {"name": "AWS_REGION", "value": aws_region},
+                        {"name": "AWS_PROFILE", "value": aws_profile},
+                        {
+                            "name": "NEXT_PUBLIC_CPR_APP_URL",
+                            "value": "https://app.climatepolicyradar.org",
+                        },
+                        {
+                            "name": "NEXT_PUBLIC_WIKIBASE_URL",
+                            "value": "https://climatepolicyradar.wikibase.cloud",
+                        },
                     ],
                     "logConfiguration": {
                         "logDriver": "awslogs",
@@ -312,9 +369,14 @@ service = ecs.Service(
             container_port=80,
         )
     ],
+    opts=pulumi.ResourceOptions(depends_on=[listener]),
 )
 
 # Exports
 pulumi.export("alb_dns_name", alb.dns_name)
 pulumi.export("bucket_name", bucket.bucket)
 pulumi.export("repository_url", repository.repository_url)
+pulumi.export("cluster_name", cluster.name)
+pulumi.export("service_name", service.name)
+pulumi.export("log_group_name", log_group.name)
+pulumi.export("certificate_arn", certificate.arn)
