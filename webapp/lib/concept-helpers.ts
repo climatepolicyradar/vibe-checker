@@ -2,7 +2,7 @@ import { YamlConcept, EnhancedConcept } from "@/types/concepts";
 
 export function getConceptDefaults(
   concept: string | YamlConcept,
-  conceptId: string
+  conceptId: string,
 ): Omit<EnhancedConcept, "n_classifiers"> {
   return {
     wikibase_id: conceptId,
@@ -16,4 +16,3 @@ export function getConceptDefaults(
         : concept.description || `Concept ${conceptId}`,
   };
 }
-

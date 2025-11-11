@@ -1,6 +1,5 @@
 export interface ClassifierData {
   id: string;
-  string: string;
   name: string;
   date: string;
 }
