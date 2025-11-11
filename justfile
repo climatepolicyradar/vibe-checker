@@ -67,19 +67,14 @@ serve-webapp: install-webapp
 
 # Push the Docker image to ECR
 push-webapp:
-    cd {{infra_dir}}
-    export REPO_URL=$(pulumi stack output repository_url)
-    cd ../{{webapp_dir}}
-    docker tag vibe-checker-webapp:latest $REPO_URL:latest
-    aws ecr get-login-password --region {{aws_region}} | docker login --username AWS --password-stdin $REPO_URL
+    cd {{infra_dir}} && export REPO_URL=$(pulumi stack output repository_url) && \
+    cd ../{{webapp_dir}} && docker tag vibe-checker-webapp:latest $REPO_URL:latest && \
+    aws ecr get-login-password --region {{aws_region}} --profile {{aws_profile}} | docker login --username AWS --password-stdin $REPO_URL && \
     docker push $REPO_URL:latest
 
 # refresh the ecs task definition
 refresh-webapp-task:
-    cd {{infra_dir}}
-    export CLUSTER_NAME=$(pulumi stack output cluster_name)
-    export SERVICE_NAME=$(pulumi stack output service_name)
-    aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment
+    cd {{infra_dir}} && aws ecs update-service --cluster $(pulumi stack output cluster_name) --service $(pulumi stack output service_name) --force-new-deployment --region {{aws_region}} --profile {{aws_profile}}
 
 # Run all steps to deploy the webapp
 deploy-webapp: build-webapp push-webapp refresh-webapp-task
