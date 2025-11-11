@@ -9,6 +9,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import SearchBox from "../components/SearchBox";
 import { ConceptData } from "@/types/concepts";
 import { DEBOUNCE } from "@/lib/constants";
+import { enrichConceptData } from "@/lib/concept-helpers";
 
 export default function Home() {
   const router = useRouter();
@@ -25,13 +26,7 @@ export default function Home() {
 
         if (result.success) {
           const conceptData: ConceptData[] = (result.data as ConceptData[]).map(
-            (concept) => ({
-              wikibase_id: concept.wikibase_id,
-              preferred_label: concept.preferred_label || concept.wikibase_id,
-              description:
-                concept.description || `Concept ${concept.wikibase_id}`,
-              n_classifiers: concept.n_classifiers || 0,
-            }),
+            enrichConceptData,
           );
           setConcepts(conceptData);
         } else {

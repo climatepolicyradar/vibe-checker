@@ -9,6 +9,7 @@ import ErrorMessage from "@/components/ErrorMessage";
 import MaterialIcon from "@/components/MaterialIcon";
 import { ClassifierInfo } from "@/types/classifiers";
 import { ConceptData } from "@/types/concepts";
+import { enrichConceptData } from "@/lib/concept-helpers";
 
 interface ConceptPageClientProps {
   conceptId: string;
@@ -43,7 +44,7 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
           // Fetch concept metadata from concepts list
           if (conceptsResult.success) {
             const concepts: ConceptData[] = Array.isArray(conceptsResult.data)
-              ? conceptsResult.data
+              ? conceptsResult.data.map(enrichConceptData)
               : [];
             const concept = concepts.find((c) => c.wikibase_id === conceptId);
             if (concept) {

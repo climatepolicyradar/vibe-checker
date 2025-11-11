@@ -8,6 +8,7 @@ import Breadcrumb from "@/components/Breadcrumb";
 import { ConceptData } from "@/types/concepts";
 import { FilterState } from "@/types/filters";
 import ConceptHeader from "@/components/ConceptHeader";
+import { enrichConceptData } from "@/lib/concept-helpers";
 import { DEBOUNCE } from "@/lib/constants";
 import ErrorMessage from "@/components/ErrorMessage";
 import LabelledPassage from "@/components/LabelledPassage";
@@ -138,7 +139,7 @@ export default function PredictionsPageClient({
         const result = await response.json();
         if (result.success && result.data) {
           const concepts: ConceptData[] = Array.isArray(result.data)
-            ? result.data
+            ? result.data.map(enrichConceptData)
             : [];
           const concept = concepts.find((c) => c.wikibase_id === conceptId);
           if (concept) {
