@@ -177,8 +177,8 @@ ecs_security_group = ec2.SecurityGroup(
     ingress=[
         ec2.SecurityGroupIngressArgs(
             protocol="tcp",
-            from_port=80,
-            to_port=80,
+            from_port=3000,
+            to_port=3000,
             security_groups=[alb_security_group.id],
             description="Next.js app port",
         ),
