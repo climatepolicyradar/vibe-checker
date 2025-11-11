@@ -11,19 +11,20 @@ help:
 
 # Install all dependencies
 install: install-python install-webapp install-hooks
-    echo "All dependencies installed."
 
 # Install Python dependencies via uv (all groups by default)
 install-python:
     uv sync --all-extras
 
-# Install specific Python dependency groups
+# Install the dependencies for infrastructure deployment
 install-infra:
     uv sync --extra infra
 
+# install dependencies for running pipeline flows
 install-pipeline:
     uv sync --extra pipeline
 
+# install dev dependencies
 install-dev:
     uv sync --extra dev
 
@@ -47,17 +48,22 @@ lint-webapp:
     cd {{webapp_dir}} && npm run lint
 
 # Export Pulumi outputs to .env.local for local development
-export-variables-from-infra:
+export-environment-variables-from-infra:
     cd {{infra_dir}}
     pulumi stack output --json | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' > ../{{webapp_dir}}/.env
     echo "Variables exported to {{webapp_dir}}/.env.local"
 
+# Deploy AWS infrastructure with Pulumi
+deploy-infra:
+    cd {{infra_dir}}
+    pulumi up
+    
 # Build the Next.js webapp Docker image
 build-webapp:
     cd {{webapp_dir}} && docker build -t vibe-checker-webapp .
 
 serve-webapp: install-webapp
-    cd {{webapp_dir}} && npm dev
+    cd {{webapp_dir}} && npm run dev
 
 # Push the Docker image to ECR
 push-webapp:
@@ -68,11 +74,30 @@ push-webapp:
     aws ecr get-login-password --region {{aws_region}} | docker login --username AWS --password-stdin $REPO_URL
     docker push $REPO_URL:latest
 
-# Deploy AWS infrastructure with Pulumi
-deploy-infra:
+# refresh the ecs task definition
+refresh-webapp-task:
     cd {{infra_dir}}
-    pulumi up
+    export CLUSTER_NAME=$(pulumi stack output cluster_name)
+    export SERVICE_NAME=$(pulumi stack output service_name)
+    aws ecs update-service --cluster $CLUSTER_NAME --service $SERVICE_NAME --force-new-deployment
 
-# Full deployment: build image, push to ECR
-deploy: build-webapp push-webapp
-    echo "Deployment complete!"
+# Run all steps to deploy the webapp
+deploy-webapp: build-webapp push-webapp refresh-webapp-task
+
+# Deploy the Prefect inference pipeline
+deploy-pipeline:
+    cd {{pipeline_dir}}
+    export BUCKET_NAME=$(cd ../{{infra_dir}} && pulumi stack output bucket_name)
+    export AWS_REGION={{aws_region}}
+    export AWS_PROFILE={{aws_profile}}
+    prefect cloud login
+    prefect deploy --name vibe-checker-inference
+
+# Run the deployed inference pipeline
+run-pipeline:
+    prefect deployment run vibe-checker-inference/vibe-checker-inference
+
+# Check pipeline deployment status
+check-pipeline:
+    prefect deployment ls
+    prefect flow-run ls
