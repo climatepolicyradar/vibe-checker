@@ -58,9 +58,9 @@ deploy-infra:
     cd {{infra_dir}}
     pulumi up
     
-# Build the Next.js webapp Docker image
+# Build the Next.js webapp Docker image for Linux x86-64 (AWS)
 build-webapp:
-    cd {{webapp_dir}} && docker build -t vibe-checker-webapp .
+    cd {{webapp_dir}} && docker buildx build --platform linux/amd64 -t vibe-checker-webapp .
 
 serve-webapp: install-webapp
     cd {{webapp_dir}} && npm run dev

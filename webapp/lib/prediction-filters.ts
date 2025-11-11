@@ -69,7 +69,7 @@ export function filterPredictions(
         if (!searchRegex.test(text)) {
           return false;
         }
-      } catch (error) {
+      } catch {
         // If regex is invalid, fall back to simple string search
         const searchTerm = filters.search.toLowerCase().trim();
         const text = prediction.text.toLowerCase();
