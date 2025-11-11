@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Breadcrumb from "@/components/Breadcrumb";
 import ConceptHeader from "@/components/ConceptHeader";
 import ErrorMessage from "@/components/ErrorMessage";
 import MaterialIcon from "@/components/MaterialIcon";
-import { ClassifierInfo, ClassifierData } from "@/types/classifiers";
+import { ClassifierInfo } from "@/types/classifiers";
 import { ConceptData } from "@/types/concepts";
 
 interface ConceptPageClientProps {
@@ -18,7 +17,7 @@ interface ConceptPageClientProps {
 export default function ConceptPageClient({ conceptId }: ConceptPageClientProps) {
   const router = useRouter();
   const [classifiers, setClassifiers] = useState<ClassifierInfo[]>([]);
-  const [conceptData, setConceptData] = useState<ConceptData>({});
+  const [conceptData, setConceptData] = useState<ConceptData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
@@ -28,7 +27,7 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
         // Fetch classifiers list and concept data in parallel
         const [classifiersResponse, conceptsResponse] = await Promise.all([
           fetch(`/api/concepts/${conceptId}/classifiers`),
-          fetch('/api/concepts')
+          fetch("/api/concepts"),
         ]);
 
         const classifiersResult = await classifiersResponse.json();
@@ -43,14 +42,12 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
 
           // Fetch concept metadata from concepts list
           if (conceptsResult.success) {
-            const concept = conceptsResult.data.find(
-              (c: ConceptData & { wikibase_id: string }) => c.wikibase_id === conceptId
-            );
+            const concepts: ConceptData[] = Array.isArray(conceptsResult.data)
+              ? conceptsResult.data
+              : [];
+            const concept = concepts.find((c) => c.wikibase_id === conceptId);
             if (concept) {
-              setConceptData({
-                preferred_label: concept.preferred_label,
-                description: concept.description,
-              });
+              setConceptData(concept);
             }
           }
 
@@ -106,7 +103,7 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
 
         <ConceptHeader
           conceptId={conceptId}
-          conceptData={conceptData}
+          conceptData={conceptData ?? undefined}
         />
 
         {loading && <LoadingSpinner message="Loading classifiers..." />}

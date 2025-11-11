@@ -1,21 +1,21 @@
 "use client";
 
-import PredictionFilters, { FilterState } from "@/components/PredictionFilters";
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import PredictionFilters from "@/components/PredictionFilters";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import Link from "next/link";
-import LoadingSpinner from "@/components/LoadingSpinner";
-import PaginationControls from "@/components/PaginationControls";
 import Breadcrumb from "@/components/Breadcrumb";
-import ConceptHeader from "@/components/ConceptHeader";
-import LabelledPassage from "@/components/LabelledPassage";
-import MaterialIcon from "@/components/MaterialIcon";
-import SearchBox from "@/components/SearchBox";
-import ErrorMessage from "@/components/ErrorMessage";
-import { Prediction } from "@/types/predictions";
 import { ConceptData } from "@/types/concepts";
+import { FilterState } from "@/types/filters";
+import ConceptHeader from "@/components/ConceptHeader";
 import { DEBOUNCE } from "@/lib/constants";
+import ErrorMessage from "@/components/ErrorMessage";
+import LabelledPassage from "@/components/LabelledPassage";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import MaterialIcon from "@/components/MaterialIcon";
+import PaginationControls from "@/components/PaginationControls";
+import { Prediction } from "@/types/predictions";
+import SearchBox from "@/components/SearchBox";
 
 interface PredictionsPageClientProps {
   conceptId: string;
@@ -40,11 +40,8 @@ export default function PredictionsPageClient({
   );
   const [availableRegions, setAvailableRegions] = useState<string[]>([]);
 
-
-
-
   // Concept metadata
-  const [conceptData, setConceptData] = useState<ConceptData>({});
+  const [conceptData, setConceptData] = useState<ConceptData | null>(null);
 
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -140,18 +137,12 @@ export default function PredictionsPageClient({
         const response = await fetch(`/api/concepts`);
         const result = await response.json();
         if (result.success && result.data) {
-          const concept = result.data.find(
-            (c: {
-              wikibase_id: string;
-              preferred_label?: string;
-              description?: string;
-            }) => c.wikibase_id === conceptId,
-          );
+          const concepts: ConceptData[] = Array.isArray(result.data)
+            ? result.data
+            : [];
+          const concept = concepts.find((c) => c.wikibase_id === conceptId);
           if (concept) {
-            setConceptData({
-              preferred_label: concept.preferred_label,
-              description: concept.description,
-            });
+            setConceptData(concept);
           }
         }
       } catch (error) {
@@ -255,16 +246,15 @@ export default function PredictionsPageClient({
         <ConceptHeader
           conceptId={conceptId}
           classifierId={classifierId}
-          conceptData={conceptData}
+          conceptData={conceptData ?? undefined}
         />
 
         <div className="card mb-6 p-6">
           <div className="flex flex-col gap-4">
-
             {/* Search and Actions */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               {/* Search Input */}
-              <div className="flex-1 max-w-md">
+              <div className="max-w-md flex-1">
                 <SearchBox
                   value={urlState.searchTerms || ""}
                   onChange={handleSearchChange}

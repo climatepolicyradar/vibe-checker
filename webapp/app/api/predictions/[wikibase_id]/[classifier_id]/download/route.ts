@@ -1,12 +1,14 @@
+import { BUCKET_NAME, createS3Client } from "@/lib/s3";
+
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
-
-import { createS3Client, BUCKET_NAME } from "@/lib/s3";
 import { errorResponse } from "@/lib/api-response";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ wikibase_id: string; classifier_id: string }> },
+  {
+    params,
+  }: { params: Promise<{ wikibase_id: string; classifier_id: string }> },
 ) {
   try {
     const { wikibase_id, classifier_id } = await params;
@@ -40,4 +42,3 @@ export async function GET(
     return errorResponse(error, 500);
   }
 }
-

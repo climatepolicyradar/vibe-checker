@@ -1,17 +1,19 @@
+import { BUCKET_NAME, createS3Client } from "@/lib/s3";
+
+import { FilterParams } from "@/types/filters";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
-
-import cache from "@/lib/cache";
-import { createS3Client, BUCKET_NAME } from "@/lib/s3";
-import { errorResponse } from "@/lib/api-response";
-import { FilterParams } from "@/types/filters";
-import { Prediction } from "@/types/predictions";
-import { filterPredictions } from "@/lib/prediction-filters";
 import { PAGINATION } from "@/lib/constants";
+import { Prediction } from "@/types/predictions";
+import cache from "@/lib/cache";
+import { errorResponse } from "@/lib/api-response";
+import { filterPredictions } from "@/lib/prediction-filters";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ wikibase_id: string; classifier_id: string }> },
+  {
+    params,
+  }: { params: Promise<{ wikibase_id: string; classifier_id: string }> },
 ) {
   try {
     const { searchParams } = new URL(request.url);
@@ -42,7 +44,7 @@ export async function GET(
     if (page < PAGINATION.MIN_PAGE) {
       return errorResponse(
         new Error("Invalid pagination parameters. Page must be >= 1"),
-        400
+        400,
       );
     }
 
@@ -51,7 +53,7 @@ export async function GET(
 
     // Check cache first
     const cacheKey = `predictions-${wikibase_id}-${classifier_id}`;
-    let allPredictions = cache.get(cacheKey);
+    let allPredictions = cache.get<Prediction[]>(cacheKey);
 
     if (!allPredictions) {
       console.log(`Cache miss for predictions: ${key}, fetching from S3...`);
@@ -82,6 +84,10 @@ export async function GET(
       console.log(`Predictions data cached successfully for: ${key}`);
     } else {
       console.log(`Cache hit for predictions: ${key}`);
+    }
+
+    if (!allPredictions) {
+      throw new Error("Failed to load predictions data");
     }
 
     // Store total unfiltered count
