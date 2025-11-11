@@ -31,7 +31,7 @@ def get_ssm_parameter_arn(parameter_name):
     )
 
 
-app_name = "cpr-vibe-checker"
+app_name = "vibe-checker"
 aws_region = os.getenv("AWS_REGION", "eu-west-1")
 aws_profile = os.getenv("AWS_PROFILE", "labs")
 
@@ -44,10 +44,7 @@ certificate = acm.get_certificate(
 )
 
 # s3 bucket for storing the data
-bucket = s3.Bucket(app_name)
-
-# Export the bucket name so it can be used as an environment variable
-pulumi.export("bucket_name", bucket.bucket)
+bucket = s3.Bucket(f"cpr-{app_name}")
 
 # ECR repository for storing the container image, and ECS cluster for running the webapp
 repository = ecr.Repository(app_name)
@@ -61,18 +58,32 @@ vpc = ec2.Vpc(
     enable_dns_support=True,
 )
 
-public_subnet = ec2.Subnet(
-    f"{app_name}-public-subnet",
+public_subnet_a = ec2.Subnet(
+    f"{app_name}-public-subnet-a",
     vpc_id=vpc.id,
     cidr_block="10.0.1.0/24",
     availability_zone=f"{aws_region}a",
 )
 
-private_subnet = ec2.Subnet(
-    f"{app_name}-private-subnet",
+public_subnet_b = ec2.Subnet(
+    f"{app_name}-public-subnet-b",
+    vpc_id=vpc.id,
+    cidr_block="10.0.3.0/24",
+    availability_zone=f"{aws_region}b",
+)
+
+private_subnet_a = ec2.Subnet(
+    f"{app_name}-private-subnet-a",
     vpc_id=vpc.id,
     cidr_block="10.0.2.0/24",
     availability_zone=f"{aws_region}a",
+)
+
+private_subnet_b = ec2.Subnet(
+    f"{app_name}-private-subnet-b",
+    vpc_id=vpc.id,
+    cidr_block="10.0.4.0/24",
+    availability_zone=f"{aws_region}b",
 )
 
 igw = ec2.InternetGateway(f"{app_name}-igw", vpc_id=vpc.id)
@@ -90,8 +101,14 @@ public_route_table = ec2.RouteTable(
 )
 
 ec2.RouteTableAssociation(
-    f"{app_name}-public-rta",
-    subnet_id=public_subnet.id,
+    f"{app_name}-public-rta-a",
+    subnet_id=public_subnet_a.id,
+    route_table_id=public_route_table.id,
+)
+
+ec2.RouteTableAssociation(
+    f"{app_name}-public-rta-b",
+    subnet_id=public_subnet_b.id,
     route_table_id=public_route_table.id,
 )
 
@@ -101,7 +118,7 @@ nat_eip = ec2.Eip(f"{app_name}-nat-eip", domain="vpc")
 nat_gateway = ec2.NatGateway(
     f"{app_name}-nat-gw",
     allocation_id=nat_eip.id,
-    subnet_id=public_subnet.id,
+    subnet_id=public_subnet_a.id,
 )
 
 # Route table for private subnet
@@ -118,8 +135,14 @@ private_route_table = ec2.RouteTable(
 
 # Associate private subnet with private route table
 ec2.RouteTableAssociation(
-    f"{app_name}-private-rta",
-    subnet_id=private_subnet.id,
+    f"{app_name}-private-rta-a",
+    subnet_id=private_subnet_a.id,
+    route_table_id=private_route_table.id,
+)
+
+ec2.RouteTableAssociation(
+    f"{app_name}-private-rta-b",
+    subnet_id=private_subnet_b.id,
     route_table_id=private_route_table.id,
 )
 
@@ -245,18 +268,18 @@ alb = lb.LoadBalancer(
     internal=False,
     load_balancer_type="application",
     security_groups=[alb_security_group.id],
-    subnets=[public_subnet.id],
+    subnets=[public_subnet_a.id, public_subnet_b.id],
 )
 
 # Target group for ECS service
 target_group = lb.TargetGroup(
     f"{app_name}-tg",
-    port=80,
+    port=3000,
     protocol="HTTP",
     target_type="ip",
     vpc_id=vpc.id,
     health_check=lb.TargetGroupHealthCheckArgs(
-        path="/",
+        path="/api/health",
         protocol="HTTP",
         matcher="200",
         interval=30,
@@ -321,7 +344,7 @@ task_definition = ecs.TaskDefinition(
                     "name": app_name,
                     "image": f"{args[1]}:latest",
                     "portMappings": [
-                        {"containerPort": 80, "hostPort": 80, "protocol": "tcp"}
+                        {"containerPort": 3000, "hostPort": 3000, "protocol": "tcp"}
                     ],
                     "environment": [
                         {"name": "BUCKET_NAME", "value": args[0]},
@@ -358,7 +381,7 @@ service = ecs.Service(
     desired_count=1,
     launch_type="FARGATE",
     network_configuration=ecs.ServiceNetworkConfigurationArgs(
-        subnets=[private_subnet.id],
+        subnets=[private_subnet_a.id, private_subnet_b.id],
         security_groups=[ecs_security_group.id],
         assign_public_ip=False,
     ),
@@ -366,13 +389,13 @@ service = ecs.Service(
         ecs.ServiceLoadBalancerArgs(
             target_group_arn=target_group.arn,
             container_name=app_name,
-            container_port=80,
+            container_port=3000,
         )
     ],
     opts=pulumi.ResourceOptions(depends_on=[listener]),
 )
 
-# Exports
+# Outputs
 pulumi.export("alb_dns_name", alb.dns_name)
 pulumi.export("bucket_name", bucket.bucket)
 pulumi.export("repository_url", repository.repository_url)
