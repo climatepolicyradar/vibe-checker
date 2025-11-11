@@ -5,18 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import MaterialIcon from "@/components/MaterialIcon";
 import { Select } from "@base-ui-components/react/select";
 import { Slider } from "@base-ui-components/react/slider";
+import { FilterState } from "@/types/filters";
+import { DEBOUNCE, PUBLICATION_YEARS } from "@/lib/constants";
 
-export interface FilterState {
-  translated?: boolean;
-  corpus_type?: string;
-  world_bank_region?: string;
-  publication_year_start?: number;
-  publication_year_end?: number;
-  similarity_min?: number;
-  similarity_max?: number;
-  document_id?: string;
-  has_predictions?: boolean;
-}
+// Shared styling constant for Select.Item components
+const SELECT_ITEM_CLASSES = "relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover";
 
 interface PredictionFiltersProps {
   filters: FilterState;
@@ -70,7 +63,7 @@ export default function PredictionFilters({
     // Set new timeout for URL update
     debounceTimeoutRef.current = setTimeout(() => {
       onFilterChange(newLocalFilters);
-    }, 300);
+    }, DEBOUNCE.FILTERS);
   };
 
   // Special debounced update for multiple filter keys (like slider range)
@@ -91,7 +84,7 @@ export default function PredictionFilters({
     // Set new timeout for URL update
     debounceTimeoutRef.current = setTimeout(() => {
       onFilterChange(newLocalFilters);
-    }, 300);
+    }, DEBOUNCE.FILTERS);
   };
 
   // Immediate update for non-text inputs (selects)
@@ -215,19 +208,19 @@ export default function PredictionFilters({
                   <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
                     <Select.Item
                       value=""
-                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className={SELECT_ITEM_CLASSES}
                     >
                       <Select.ItemText>All passages</Select.ItemText>
                     </Select.Item>
                     <Select.Item
                       value="true"
-                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className={SELECT_ITEM_CLASSES}
                     >
                       <Select.ItemText>With predictions only</Select.ItemText>
                     </Select.Item>
                     <Select.Item
                       value="false"
-                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className={SELECT_ITEM_CLASSES}
                     >
                       <Select.ItemText>
                         Without predictions only
@@ -276,19 +269,19 @@ export default function PredictionFilters({
                   <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
                     <Select.Item
                       value=""
-                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className={SELECT_ITEM_CLASSES}
                     >
                       <Select.ItemText>All</Select.ItemText>
                     </Select.Item>
                     <Select.Item
                       value="true"
-                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className={SELECT_ITEM_CLASSES}
                     >
                       <Select.ItemText>Translated</Select.ItemText>
                     </Select.Item>
                     <Select.Item
                       value="false"
-                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className={SELECT_ITEM_CLASSES}
                     >
                       <Select.ItemText>Original</Select.ItemText>
                     </Select.Item>
@@ -331,7 +324,7 @@ export default function PredictionFilters({
                   <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
                     <Select.Item
                       value=""
-                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className={SELECT_ITEM_CLASSES}
                     >
                       <Select.ItemText>All types</Select.ItemText>
                     </Select.Item>
@@ -339,7 +332,7 @@ export default function PredictionFilters({
                       <Select.Item
                         key={type}
                         value={type}
-                        className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                        className={SELECT_ITEM_CLASSES}
                       >
                         <Select.ItemText>{type}</Select.ItemText>
                       </Select.Item>
@@ -383,7 +376,7 @@ export default function PredictionFilters({
                   <Select.Popup className="z-50 min-w-[8rem] overflow-hidden rounded-md border border-border-primary bg-bg-primary shadow-lg">
                     <Select.Item
                       value=""
-                      className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                      className={SELECT_ITEM_CLASSES}
                     >
                       <Select.ItemText>All regions</Select.ItemText>
                     </Select.Item>
@@ -391,7 +384,7 @@ export default function PredictionFilters({
                       <Select.Item
                         key={region}
                         value={region}
-                        className="relative flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-interactive-hover focus:bg-interactive-hover"
+                        className={SELECT_ITEM_CLASSES}
                       >
                         <Select.ItemText>{region}</Select.ItemText>
                       </Select.Item>
@@ -409,18 +402,18 @@ export default function PredictionFilters({
             </label>
             <div className="px-2">
               <Slider.Root
-                min={1990}
-                max={2030}
+                min={PUBLICATION_YEARS.MIN}
+                max={PUBLICATION_YEARS.MAX}
                 value={[
-                  localFilters.publication_year_start || 1990,
-                  localFilters.publication_year_end || 2030,
+                  localFilters.publication_year_start || PUBLICATION_YEARS.MIN,
+                  localFilters.publication_year_end || PUBLICATION_YEARS.MAX,
                 ]}
                 onValueChange={(value: number[]) => {
                   debouncedUpdateMultipleFilters({
                     publication_year_start:
-                      value[0] === 1990 ? undefined : value[0],
+                      value[0] === PUBLICATION_YEARS.MIN ? undefined : value[0],
                     publication_year_end:
-                      value[1] === 2030 ? undefined : value[1],
+                      value[1] === PUBLICATION_YEARS.MAX ? undefined : value[1],
                   });
                 }}
                 className="relative flex w-full touch-none items-center select-none"
@@ -440,8 +433,8 @@ export default function PredictionFilters({
                 </Slider.Control>
               </Slider.Root>
               <div className="text-primary mt-2 flex justify-between text-xs">
-                <span>{localFilters.publication_year_start || 1990}</span>
-                <span>{localFilters.publication_year_end || 2030}</span>
+                <span>{localFilters.publication_year_start || PUBLICATION_YEARS.MIN}</span>
+                <span>{localFilters.publication_year_end || PUBLICATION_YEARS.MAX}</span>
               </div>
             </div>
           </div>

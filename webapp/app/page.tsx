@@ -1,22 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 
 import Card from "../components/Card";
 import ErrorMessage from "../components/ErrorMessage";
 import LoadingSpinner from "../components/LoadingSpinner";
 import SearchBox from "../components/SearchBox";
-
-interface ConceptData {
-  wikibase_id: string;
-  preferred_label?: string;
-  description?: string;
-  n_classifiers?: number;
-}
+import { ConceptData } from "@/types/concepts";
+import { DEBOUNCE } from "@/lib/constants";
 
 export default function Home() {
+  const router = useRouter();
   const [concepts, setConcepts] = useState<ConceptData[]>([]);
-  const [filteredConcepts, setFilteredConcepts] = useState<ConceptData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -38,7 +34,6 @@ export default function Home() {
             }),
           );
           setConcepts(conceptData);
-          setFilteredConcepts(conceptData);
         } else {
           throw new Error(result.error || "Failed to fetch concepts");
         }
@@ -57,22 +52,19 @@ export default function Home() {
     fetchConcepts();
   }, []);
 
-  useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredConcepts(concepts);
-    } else {
-      const filtered = concepts.filter(
-        (concept) =>
-          concept.preferred_label
-            ?.toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          concept.wikibase_id
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          concept.description?.toLowerCase().includes(searchTerm.toLowerCase()),
-      );
-      setFilteredConcepts(filtered);
-    }
+  // Memoize filtered concepts to prevent unnecessary recalculations
+  const filteredConcepts = useMemo(() => {
+    if (!searchTerm.trim()) return concepts;
+    return concepts.filter(
+      (concept) =>
+        concept.preferred_label
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        concept.wikibase_id
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        concept.description?.toLowerCase().includes(searchTerm.toLowerCase()),
+    );
   }, [searchTerm, concepts]);
 
   return (
@@ -94,7 +86,7 @@ export default function Home() {
               value={searchTerm}
               onChange={setSearchTerm}
               placeholder="Search for a concept"
-              debounceMs={200}
+              debounceMs={DEBOUNCE.SEARCH}
             />
           </div>
         </div>
@@ -135,9 +127,7 @@ export default function Home() {
                   <tr
                     key={concept.wikibase_id}
                     className="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700"
-                    onClick={() =>
-                      (window.location.href = `/${concept.wikibase_id}`)
-                    }
+                    onClick={() => router.push(`/${concept.wikibase_id}`)}
                   >
                     <td className="border-b border-neutral-200 p-4 dark:border-neutral-600">
                       <p className="font-medium break-words text-neutral-900 dark:text-neutral-100">

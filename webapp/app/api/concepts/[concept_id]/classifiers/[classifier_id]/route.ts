@@ -1,17 +1,11 @@
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { NextResponse } from "next/server";
-import { fromIni } from "@aws-sdk/credential-providers";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
 import cache from "@/lib/cache";
-
-interface ClassifierData {
-  id: string;
-  string: string;
-  name: string;
-  date: string;
-}
+import { createS3Client, BUCKET_NAME } from "@/lib/s3";
+import { successResponse, errorResponse } from "@/lib/api-response";
+import { ClassifierData } from "@/types/classifiers";
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ concept_id: string; classifier_id: string }> },
 ) {
   try {
@@ -23,18 +17,17 @@ export async function GET(
 
     if (cachedData) {
       console.log(`Cache hit for classifier: ${concept_id}/${classifier_id}`);
-      return NextResponse.json(cachedData);
+      return successResponse(cachedData);
     }
 
     console.log(`Cache miss for classifier: ${concept_id}/${classifier_id}, fetching from S3...`);
-    const s3Client = new S3Client({
-      region: process.env.AWS_REGION,
-      credentials: fromIni({
-        profile: process.env.AWS_PROFILE,
-      }),
-    });
+    const s3Client = createS3Client();
+    const bucket = BUCKET_NAME;
 
-    const bucket = process.env.BUCKET_NAME;
+    if (!bucket) {
+      throw new Error("BUCKET_NAME environment variable is not set");
+    }
+
     const key = `${concept_id}/${classifier_id}/classifier.json`;
 
     const command = new GetObjectCommand({ Bucket: bucket, Key: key });
@@ -48,24 +41,12 @@ export async function GET(
     const text = await body.transformToString();
     const classifierData: ClassifierData = JSON.parse(text);
 
-    const result = {
-      success: true,
-      data: classifierData,
-    };
-
     // Store in cache
-    cache.set(cacheKey, result);
+    cache.set(cacheKey, classifierData);
     console.log(`Classifier data cached successfully for: ${concept_id}/${classifier_id}`);
 
-    return NextResponse.json(result);
+    return successResponse(classifierData);
   } catch (error) {
-    console.error("Error fetching classifier:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    );
+    return errorResponse(error, 500);
   }
 }

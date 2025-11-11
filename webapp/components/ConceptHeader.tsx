@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ExternalLink from "./ExternalLink";
+import { buildWikibaseUrl } from "@/lib/urls";
 
 interface ConceptHeaderProps {
   conceptId: string;
@@ -55,7 +56,7 @@ export default function ConceptHeader({
 
         <div className="flex-shrink-0">
           <ExternalLink
-            href={`https://climatepolicyradar.wikibase.cloud/wiki/Item:${conceptId}`}
+            href={buildWikibaseUrl(conceptId)}
             className="text-sm text-secondary hover:text-primary"
           >
             View in Wikibase

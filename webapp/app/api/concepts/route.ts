@@ -1,29 +1,14 @@
 import {
   GetObjectCommand,
   ListObjectsV2Command,
-  S3Client,
 } from "@aws-sdk/client-s3";
 
-import { NextResponse } from "next/server";
-import { fromIni } from "@aws-sdk/credential-providers";
 import { load } from "js-yaml";
 import cache from "@/lib/cache";
-
-// Type definitions
-interface YamlConcept {
-  id?: string;
-  wikibase_id?: string;
-  preferred_label?: string;
-  description?: string;
-}
-
-
-interface EnhancedConcept {
-  wikibase_id: string;
-  preferred_label: string;
-  description: string;
-  n_classifiers: number;
-}
+import { createS3Client, BUCKET_NAME } from "@/lib/s3";
+import { successResponse, errorResponse } from "@/lib/api-response";
+import { YamlConcept, EnhancedConcept } from "@/types/concepts";
+import { getConceptDefaults } from "@/lib/concept-helpers";
 
 export async function GET() {
   try {
@@ -33,18 +18,16 @@ export async function GET() {
 
     if (cachedData) {
       console.log('Cache hit for concepts');
-      return NextResponse.json(cachedData);
+      return successResponse(cachedData);
     }
 
     console.log('Cache miss for concepts, fetching from S3...');
-    const s3Client = new S3Client({
-      region: process.env.AWS_REGION,
-      credentials: fromIni({
-        profile: process.env.AWS_PROFILE,
-      }),
-    });
+    const s3Client = createS3Client();
+    const bucket = BUCKET_NAME;
 
-    const bucket = process.env.BUCKET_NAME;
+    if (!bucket) {
+      throw new Error("BUCKET_NAME environment variable is not set");
+    }
 
     // Fetch concepts.yml
     const conceptsKey = "concepts.yml";
@@ -96,8 +79,8 @@ export async function GET() {
       const conceptJsonKeys = conceptJsonPaths[conceptId];
 
       if (conceptJsonKeys && conceptJsonKeys.length > 0) {
-        // Sort keys to get the latest classifier (assuming lexicographic order)
-        conceptJsonKeys.sort();
+        // Sort keys to get the latest classifier (using explicit localeCompare)
+        conceptJsonKeys.sort((a, b) => a.localeCompare(b));
         const latestConceptJsonKey =
           conceptJsonKeys[conceptJsonKeys.length - 1];
 
@@ -113,58 +96,44 @@ export async function GET() {
             const conceptJsonContent =
               await conceptJsonBody.transformToString();
             const conceptMetadata = JSON.parse(conceptJsonContent);
+            const defaults = getConceptDefaults(concept, conceptId);
 
             enhancedConcepts.push({
-              wikibase_id: conceptId,
-              preferred_label: conceptMetadata.preferred_label || (typeof concept === "string" ? concept : concept.preferred_label || conceptId),
-              description: conceptMetadata.description || (typeof concept === "string" ? `Concept ${concept}` : concept.description || `Concept ${conceptId}`),
+              ...defaults,
+              preferred_label: conceptMetadata.preferred_label || defaults.preferred_label,
+              description: conceptMetadata.description || defaults.description,
               n_classifiers: conceptJsonKeys.length,
             });
           } else {
+            const defaults = getConceptDefaults(concept, conceptId);
             enhancedConcepts.push({
-              wikibase_id: conceptId,
-              preferred_label: typeof concept === "string" ? concept : concept.preferred_label || conceptId,
-              description: typeof concept === "string" ? `Concept ${concept}` : concept.description || `Concept ${conceptId}`,
+              ...defaults,
               n_classifiers: conceptJsonKeys.length,
             });
           }
         } catch (error) {
           console.warn(`Failed to fetch concept.json for ${conceptId}:`, error);
+          const defaults = getConceptDefaults(concept, conceptId);
           enhancedConcepts.push({
-            wikibase_id: conceptId,
-            preferred_label: typeof concept === "string" ? concept : concept.preferred_label || conceptId,
-            description: typeof concept === "string" ? `Concept ${concept}` : concept.description || `Concept ${conceptId}`,
+            ...defaults,
             n_classifiers: 0,
           });
         }
       } else {
+        const defaults = getConceptDefaults(concept, conceptId);
         enhancedConcepts.push({
-          wikibase_id: conceptId,
-          preferred_label: typeof concept === "string" ? concept : concept.preferred_label || conceptId,
-          description: typeof concept === "string" ? `Concept ${concept}` : concept.description || `Concept ${conceptId}`,
+          ...defaults,
           n_classifiers: 0,
         });
       }
     }
 
-    const result = {
-      success: true,
-      data: enhancedConcepts,
-    };
-
     // Store in cache
-    cache.set(cacheKey, result);
+    cache.set(cacheKey, enhancedConcepts);
     console.log('Concepts data cached successfully');
 
-    return NextResponse.json(result);
+    return successResponse(enhancedConcepts);
   } catch (error) {
-    console.error("Error fetching concepts from S3:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    );
+    return errorResponse(error, 500);
   }
 }

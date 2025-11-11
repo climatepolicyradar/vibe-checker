@@ -12,6 +12,10 @@ import ConceptHeader from "@/components/ConceptHeader";
 import LabelledPassage from "@/components/LabelledPassage";
 import MaterialIcon from "@/components/MaterialIcon";
 import SearchBox from "@/components/SearchBox";
+import ErrorMessage from "@/components/ErrorMessage";
+import { Prediction } from "@/types/predictions";
+import { ConceptData } from "@/types/concepts";
+import { DEBOUNCE } from "@/lib/constants";
 
 interface PredictionsPageClientProps {
   conceptId: string;
@@ -40,27 +44,7 @@ export default function PredictionsPageClient({
 
 
   // Concept metadata
-  const [conceptData, setConceptData] = useState<{
-    preferred_label?: string;
-    description?: string;
-  }>({});
-
-  interface Prediction {
-    text: string;
-    marked_up_text?: string; // HTML with <span> tags for highlighting
-    spans?: Array<{ start: number; end: number; label: string }>;
-    metadata: {
-      "text_block.text_block_id": string;
-      "text_block.page_number": string;
-      document_id: string;
-      translated: string;
-      "document_metadata.publication_ts": string;
-      "document_metadata.corpus_type_name": string;
-      document_slug: string;
-      world_bank_region: string;
-      similarity: string;
-    };
-  }
+  const [conceptData, setConceptData] = useState<ConceptData>({});
 
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -76,10 +60,10 @@ export default function PredictionsPageClient({
       corpus_type: searchParams.get("corpus_type") || undefined,
       world_bank_region: searchParams.get("world_bank_region") || undefined,
       publication_year_start: searchParams.get("publication_year_start")
-        ? parseInt(searchParams.get("publication_year_start")!)
+        ? parseInt(searchParams.get("publication_year_start") || "0")
         : undefined,
       publication_year_end: searchParams.get("publication_year_end")
-        ? parseInt(searchParams.get("publication_year_end")!)
+        ? parseInt(searchParams.get("publication_year_end") || "0")
         : undefined,
       document_id: searchParams.get("document_id") || undefined,
       has_predictions: searchParams.get("has_predictions")
@@ -285,16 +269,17 @@ export default function PredictionsPageClient({
                   value={urlState.searchTerms || ""}
                   onChange={handleSearchChange}
                   placeholder="Search in passage text..."
-                  debounceMs={500}
+                  debounceMs={DEBOUNCE.FILTERS}
                 />
               </div>
 
               {/* Download Button */}
               <div className="flex items-center gap-4">
                 <a
-                  href="#"
+                  href={`/api/predictions/${conceptId}/${classifierId}/download`}
                   title="Download JSON"
                   className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
+                  download
                 >
                   <MaterialIcon name="download" size={16} />
                   Download JSON
@@ -329,13 +314,7 @@ export default function PredictionsPageClient({
 
         {loading && <LoadingSpinner message="Loading predictions..." />}
 
-        {error && (
-          <div className="card mb-6 border-red-200 bg-red-50 p-4">
-            <div className="text-primary">
-              <strong className="font-medium">Error:</strong> {error}
-            </div>
-          </div>
-        )}
+        {error && <ErrorMessage error={error} />}
 
         {/* Passages container */}
         {!loading && !error && predictions.length > 0 && (

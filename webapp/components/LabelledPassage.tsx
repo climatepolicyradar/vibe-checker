@@ -1,17 +1,6 @@
 import ExternalLink from "./ExternalLink";
-
-interface PredictionMetadata {
-  "text_block.text_block_id": string;
-  "text_block.page_number": string;
-  document_id: string;
-  translated: string;
-  "document_metadata.publication_ts": string;
-  "document_metadata.corpus_type_name": string;
-  "document_metadata.slug": string;
-  "document_metadata.family_slug": string;
-  world_bank_region: string;
-  similarity: string;
-}
+import { PredictionMetadata } from "@/types/predictions";
+import { buildDocumentUrl } from "@/lib/urls";
 
 interface LabelledPassageProps {
   text: string;
@@ -26,10 +15,10 @@ export default function LabelledPassage({
   metadata,
 }: LabelledPassageProps) {
   // Build CPR document URL
-  const familySlug = metadata["document_metadata.family_slug"];
-  const documentSlug = metadata["document_metadata.slug"];
+  const familySlug = metadata["document_metadata.family_slug"] || "";
+  const documentSlug = metadata["document_metadata.slug"] || "";
   const pageNumber = Number(metadata["text_block.page_number"]) + 1;
-  const documentUrl = `https://app.climatepolicyradar.org/documents/${documentSlug}?page=${pageNumber}&id=${familySlug}`;
+  const documentUrl = buildDocumentUrl(documentSlug, familySlug, pageNumber);
 
   // Parse publication date
   const pubDate = new Date(metadata["document_metadata.publication_ts"]);

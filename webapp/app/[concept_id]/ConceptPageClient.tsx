@@ -1,36 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Breadcrumb from "@/components/Breadcrumb";
 import ConceptHeader from "@/components/ConceptHeader";
+import ErrorMessage from "@/components/ErrorMessage";
 import MaterialIcon from "@/components/MaterialIcon";
-
-interface ClassifierData {
-  id: string;
-  string: string;
-  name: string;
-  date: string;
-}
-
-interface ClassifierInfo {
-  id: string;
-  data?: ClassifierData;
-  loading: boolean;
-  error?: string;
-}
-
-interface ConceptData {
-  preferred_label?: string;
-  description?: string;
-}
+import { ClassifierInfo, ClassifierData } from "@/types/classifiers";
+import { ConceptData } from "@/types/concepts";
 
 interface ConceptPageClientProps {
   conceptId: string;
 }
 
 export default function ConceptPageClient({ conceptId }: ConceptPageClientProps) {
+  const router = useRouter();
   const [classifiers, setClassifiers] = useState<ClassifierInfo[]>([]);
   const [conceptData, setConceptData] = useState<ConceptData>({});
   const [loading, setLoading] = useState<boolean>(true);
@@ -39,94 +25,62 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
   useEffect(() => {
     const fetchClassifiers = async () => {
       try {
-        const response = await fetch(`/api/concepts/${conceptId}/classifiers`);
-        const result = await response.json();
+        // Fetch classifiers list and concept data in parallel
+        const [classifiersResponse, conceptsResponse] = await Promise.all([
+          fetch(`/api/concepts/${conceptId}/classifiers`),
+          fetch('/api/concepts')
+        ]);
 
-        if (result.success) {
+        const classifiersResult = await classifiersResponse.json();
+        const conceptsResult = await conceptsResponse.json();
+
+        if (classifiersResult.success) {
           // Initialize classifiers with loading state
-          const classifierInfos: ClassifierInfo[] = result.data.map((id: string) => ({
+          const classifierInfos: ClassifierInfo[] = classifiersResult.data.map((id: string) => ({
             id,
             loading: true,
           }));
-          setClassifiers(classifierInfos);
 
-          // Fetch detailed data for each classifier and concept metadata
-          classifierInfos.forEach(async (classifierInfo, index) => {
-            try {
-              const classifierResponse = await fetch(
-                `/api/concepts/${conceptId}/classifiers/${classifierInfo.id}`
-              );
-              const classifierResult = await classifierResponse.json();
-
-              if (classifierResult.success) {
-                setClassifiers(prev =>
-                  prev.map((c, i) =>
-                    i === index
-                      ? { ...c, data: classifierResult.data, loading: false }
-                      : c
-                  )
-                );
-              } else {
-                setClassifiers(prev =>
-                  prev.map((c, i) =>
-                    i === index
-                      ? { ...c, error: classifierResult.error, loading: false }
-                      : c
-                  )
-                );
-              }
-            } catch (err) {
-              setClassifiers(prev =>
-                prev.map((c, i) =>
-                  i === index
-                    ? {
-                        ...c,
-                        error: err instanceof Error ? err.message : "Unknown error",
-                        loading: false
-                      }
-                    : c
-                )
-              );
-            }
-          });
-
-          // Fetch concept metadata from the first classifier
-          if (classifierInfos.length > 0) {
-            try {
-              const conceptResponse = await fetch(
-                `/api/concepts/${conceptId}/classifiers/${classifierInfos[0].id}`
-              );
-              const conceptResult = await conceptResponse.json();
-
-              if (conceptResult.success) {
-                // Fetch the concept.json file to get metadata
-                const conceptJsonResponse = await fetch(
-                  `/api/predictions/${conceptId}/${classifierInfos[0].id}?page=1`
-                );
-                const conceptJsonResult = await conceptJsonResponse.json();
-
-                if (conceptJsonResult.success) {
-                  // Extract concept data from the predictions response metadata or try the concept endpoint
-                  const conceptsResponse = await fetch('/api/concepts');
-                  const conceptsResult = await conceptsResponse.json();
-
-                  if (conceptsResult.success) {
-                    const concept = conceptsResult.data.find((c: any) => c.wikibase_id === conceptId);
-                    if (concept) {
-                      setConceptData({
-                        preferred_label: concept.preferred_label,
-                        description: concept.description,
-                      });
-                    }
-                  }
-                }
-              }
-            } catch (err) {
-              console.error("Error fetching concept metadata:", err);
+          // Fetch concept metadata from concepts list
+          if (conceptsResult.success) {
+            const concept = conceptsResult.data.find(
+              (c: ConceptData & { wikibase_id: string }) => c.wikibase_id === conceptId
+            );
+            if (concept) {
+              setConceptData({
+                preferred_label: concept.preferred_label,
+                description: concept.description,
+              });
             }
           }
+
+          // Fetch detailed data for each classifier in parallel
+          const classifierDetails = await Promise.all(
+            classifierInfos.map(async (classifierInfo) => {
+              try {
+                const classifierResponse = await fetch(
+                  `/api/concepts/${conceptId}/classifiers/${classifierInfo.id}`
+                );
+                const classifierResult = await classifierResponse.json();
+                return classifierResult.success ? classifierResult.data : null;
+              } catch (err) {
+                console.error(err);
+                return null;
+              }
+            })
+          );
+
+          // Update classifiers with fetched data in a single batch
+          setClassifiers(
+            classifierInfos.map((info, i) => ({
+              ...info,
+              data: classifierDetails[i] || undefined,
+              loading: false,
+              error: classifierDetails[i] ? undefined : "Failed to load",
+            }))
+          );
         } else {
-          throw new Error(result.error || "Failed to fetch classifiers");
+          throw new Error(classifiersResult.error || "Failed to fetch classifiers");
         }
       } catch (err) {
         console.error("Error fetching classifiers:", err);
@@ -157,13 +111,7 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
 
         {loading && <LoadingSpinner message="Loading classifiers..." />}
 
-        {error && (
-          <div className="card mb-6 p-4 border-red-200 bg-red-50">
-            <div className="text-primary">
-              <strong className="font-medium">Error:</strong> {error}
-            </div>
-          </div>
-        )}
+        {error && <ErrorMessage error={error} />}
 
         {!loading && !error && classifiers.length > 0 && (
           <div className="card overflow-hidden">
@@ -192,7 +140,7 @@ export default function ConceptPageClient({ conceptId }: ConceptPageClientProps)
                   <tr
                     key={classifier.id}
                     className="cursor-pointer transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-700"
-                    onClick={() => (window.location.href = `/${conceptId}/${classifier.id}`)}
+                    onClick={() => router.push(`/${conceptId}/${classifier.id}`)}
                   >
                     <td className="border-b border-neutral-200 p-4 dark:border-neutral-600">
                       <div className="flex items-center gap-2">
