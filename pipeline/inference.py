@@ -183,7 +183,6 @@ def process_single_concept(
     wikibase_id: WikibaseID,
     passages_dataset: pd.DataFrame,
     passages_embeddings: np.ndarray,
-    passages_embeddings_metadata: dict,
     embedding_model: SentenceTransformer,
 ) -> dict:
     """
@@ -284,6 +283,12 @@ def process_single_concept(
         classifier = ClassifierFactory.create(concept)
         logger.info(f"Created a {classifier}")
 
+        classifier_metadata = {
+            "id": classifier.id,
+            "name": str(classifier),
+            "date": datetime.now().date().isoformat(),
+        }
+
         # Run inference for the concept
         logger.info(f"Running inference for {classifier} in batches of {BATCH_SIZE}")
         # Calculate total passages for progress tracking
@@ -294,10 +299,11 @@ def process_single_concept(
         for idx, (_, row) in enumerate(selected_passages.iterrows()):
             text = str(row["text_block.text"])
             predicted_spans = classifier.predict(text)
+            text_block_metadata = {str(k): str(v) for k, v in row.to_dict().items()}
             labelled_passage = LabelledPassage(
                 text=text,
                 spans=predicted_spans,
-                metadata={str(k): str(v) for k, v in row.to_dict().items()},
+                metadata=text_block_metadata,
             )
             labelled_passages.append(labelled_passage)
 
@@ -334,6 +340,7 @@ def process_single_concept(
                 for labelled_passage in labelled_passages
             ]
         )
+
         logger.info(f"Pushing predictions to S3: {output_prefix / 'predictions.jsonl'}")
         push_object_bytes_to_s3(
             s3_client=s3_client,
@@ -341,51 +348,31 @@ def process_single_concept(
             data=jsonl_string.encode("utf-8"),
         )
 
-        # Push concept data to S3
+        logger.info(f"Pushing concept data to S3: {output_prefix / 'concept.json'}")
         push_object_bytes_to_s3(
             s3_client=s3_client,
             key=output_prefix / "concept.json",
             data=concept.model_dump_json().encode("utf-8"),
         )
 
-        # Push classifier metadata to S3
-        classifier_data = {
-            "id": classifier.id,
-            "string": str(classifier),
-            "name": classifier.name,
-            "date": datetime.now().date().isoformat(),
-        }
+        logger.info(
+            f"Pushing classifier metadata to S3: {output_prefix / 'classifier.json'}"
+        )
         push_object_bytes_to_s3(
             s3_client=s3_client,
             key=output_prefix / "classifier.json",
-            data=json.dumps(classifier_data).encode("utf-8"),
+            data=json.dumps(classifier_metadata).encode("utf-8"),
         )
 
-        # Calculate statistics about the results and push them to S3
         n_positive_passages = sum(1 for passage in labelled_passages if passage.spans)
         n_passages = len(labelled_passages)
-        percentage_positive = (
-            (n_positive_passages / n_passages * 100) if n_passages > 0 else 0.0
-        )
-        stats = {
-            "n_positive_passages": n_positive_passages,
-            "n_negative_passages": len(labelled_passages) - n_positive_passages,
-            "percentage": percentage_positive,
-        }
-
-        push_object_bytes_to_s3(
-            s3_client=s3_client,
-            key=output_prefix / "stats.json",
-            data=json.dumps(stats).encode("utf-8"),
-        )
 
         result = {
             "concept_id": wikibase_id,
             "preferred_label": concept.preferred_label,
             "n_passages": n_passages,
             "n_positive_passages": n_positive_passages,
-            "percentage": percentage_positive,
-            "output_prefix": output_prefix,
+            "output_prefix": str(output_prefix),
             "status": "success",
         }
 
@@ -441,7 +428,6 @@ def vibe_checker_inference():
     │   │   ├── predictions.jsonl          # Output: All predictions (positive + negative)
     │   │   ├── concept.json               # Output: Concept metadata at inference time
     │   │   ├── classifier.json            # Output: Classifier metadata and config
-    │   │   └── stats.json                 # Output: Statistics about the results, eg f1 across various equity strata
     │   └── ...                            # Additional classifiers for same concept
     └── ...                                # Additional concepts
     ```
@@ -487,7 +473,6 @@ def vibe_checker_inference():
             wikibase_id=wikibase_id,
             passages_dataset=passages_dataset,
             passages_embeddings=passages_embeddings,
-            passages_embeddings_metadata=passages_embeddings_metadata,
             embedding_model=embedding_model,
         )
         concept_futures.append(future)
