@@ -3,7 +3,6 @@ name = "vibe-checker"
 version = "0.1.0"
 description = "Climate policy radar vibe checker"
 requires-python = ">=3.13"
-dependencies = []
 
 [project.optional-dependencies]
 infra = [
@@ -14,6 +13,7 @@ infra = [
 pipeline = [
     "prefect[aws]>=3.4.15",
     "rich",
+    "typer>=0.15.1",
     "sentence-transformers>=5.1.0",
     "transformers>=4.56.1",
     "knowledge-graph @ git+https://github.com/climatepolicyradar/knowledge-graph@2d2f1f7e10825114bb6419a6b5783700936f5bc4"

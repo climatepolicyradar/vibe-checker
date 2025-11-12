@@ -5,10 +5,12 @@ import os
 import random
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 import boto3
 import numpy as np
 import pandas as pd
+import typer
 import yaml
 from knowledge_graph.classifier import ClassifierFactory
 from knowledge_graph.identifiers import WikibaseID
@@ -22,9 +24,6 @@ from prefect.logging import get_logger
 from prefect.task_runners import ThreadPoolTaskRunner
 from rich.logging import RichHandler
 from sentence_transformers import SentenceTransformer
-
-# Constants
-BATCH_SIZE = 1000
 
 # Get bucket name with validation
 if not (BUCKET_NAME := os.getenv("BUCKET_NAME", "")):
@@ -140,7 +139,9 @@ def load_passages_dataset(
 
 
 @task(retries=3, retry_delay_seconds=5)
-def load_wikibase_ids(config_file_name: str = "concepts.yml") -> list[WikibaseID]:
+def load_wikibase_ids_from_s3(
+    config_file_name: str = "concepts.yml",
+) -> list[WikibaseID]:
     """Load concept IDs from the configuration file."""
     s3_client = get_s3_client()
     bytes_from_s3 = get_object_bytes_from_s3(s3_client, config_file_name)
@@ -290,7 +291,7 @@ def process_single_concept(
         }
 
         # Run inference for the concept
-        logger.info(f"Running inference for {classifier} in batches of {BATCH_SIZE}")
+        logger.info(f"Running inference for {classifier}")
         # Calculate total passages for progress tracking
         n_passages = len(selected_passages)
 
@@ -394,62 +395,28 @@ def process_single_concept(
             "concept_id": wikibase_id,
             "status": "failed",
             "error": str(e),
-            "total_passages": len(passages_dataset),
-            "positive_passages": 0,
-            "percentage": 0.0,
+            "n_passages": len(passages_dataset),
+            "n_positive_passages": 0,
+            "output_prefix": "",
         }
 
 
-@flow(  # pyright: ignore[reportCallIssue]
-    timeout_seconds=None,
-    task_runner=ThreadPoolTaskRunner(max_workers=10),  # pyright: ignore[reportArgumentType]
-)
-def vibe_checker_inference():
+def _run_inference_on_concepts(wikibase_ids: list[WikibaseID]) -> list[dict]:
     """
-    Run parallel inference on multiple concepts using their classifiers.
+    Core inference logic: submit tasks for each concept and collect results.
 
-    This flow orchestrates the complete inference pipeline:
-
-    1. Load Data: Fetches passages dataset and concept configurations from S3
-    2. Parallel Processing: Runs inference for each concept simultaneously using ThreadPoolTaskRunner
-    3. Store Results: Saves structured outputs to S3 in a hierarchical format
-    4. Report Statistics: Logs success/failure rates and performance metrics
-
-    S3 Bucket Structure:
-
-    ```
-    s3://{BUCKET_NAME}/
-    ├── concepts.yml                       # Input: List of Wikibase IDs for which we will run inference
-    ├── passages_dataset.feather           # Input: Dataset of passages for inference
-    ├── passages_embeddings.npy            # Input: Embeddings of passages for inference
-    ├── passages_embeddings_metadata.json  # Input: Metadata about the model used to generate the passages embeddings
-    ├── {concept_id}/                      # Output: One directory per concept
-    │   ├── {classifier_id}/               # Output: One directory per classifier
-    │   │   ├── predictions.jsonl          # Output: All predictions (positive + negative)
-    │   │   ├── concept.json               # Output: Concept metadata at inference time
-    │   │   ├── classifier.json            # Output: Classifier metadata and config
-    │   └── ...                            # Additional classifiers for same concept
-    └── ...                                # Additional concepts
-    ```
+    Args:
+        wikibase_ids: List of Wikibase IDs to process
+        passages_dataset: DataFrame of passages
+        passages_embeddings: Pre-computed embeddings
+        embedding_model: SentenceTransformer model instance
 
     Returns:
-        List[dict]: Results for each concept with keys:
-            - concept_id: wikibase_id
-            - preferred_label: concept.preferred_label
-            - n_passages: n_passages
-            - n_positive_passages: n_positive_passages
-            - percentage: percentage_positive
-            - output_prefix: output_prefix
-            - status: "success"
+        List of result dicts with keys: concept_id, status, n_passages, etc.
     """
-    # Load shared data
     logger.info("Loading dataset...")
     passages_dataset = load_passages_dataset()
     logger.info(f"Loaded {len(passages_dataset)} passages from the dataset")
-
-    logger.info("Loading wikibase IDs...")
-    wikibase_ids = load_wikibase_ids()
-    logger.info(f"Loaded {len(wikibase_ids)} wikibase IDs from the config")
 
     logger.info("Loading embeddings...")
     passages_embeddings = load_embeddings()
@@ -464,8 +431,7 @@ def vibe_checker_inference():
     embedding_model = SentenceTransformer(embedding_model_name)
     logger.info(f"Loaded embedding model: {embedding_model_name}")
 
-    # Submit a separate inference task for each of the concepts, and then wait for
-    # all of them to complete
+    # Submit a separate inference task for each of the concepts, and then wait for all
     logger.info(f"Starting parallel inference of {len(wikibase_ids)} concepts...")
     concept_futures = []
     for wikibase_id in wikibase_ids:
@@ -519,5 +485,100 @@ def vibe_checker_inference():
     return collected_results
 
 
+@flow(  # pyright: ignore[reportCallIssue]
+    timeout_seconds=None,
+    task_runner=ThreadPoolTaskRunner(max_workers=10),  # pyright: ignore[reportArgumentType]
+)
+def inference_from_config():
+    """
+    Run inference on all concepts defined in concepts.yml (S3 config).
+
+    This is the standard CI path that loads the concept list from the S3 configuration.
+
+    Returns:
+        List[dict]: Results for each processed concept
+    """
+    logger.info("Loading wikibase IDs from config...")
+    wikibase_ids = load_wikibase_ids_from_s3()
+    logger.info(f"Loaded {len(wikibase_ids)} wikibase IDs from the config")
+    return _run_inference_on_concepts(wikibase_ids=wikibase_ids)
+
+
+@flow(  # pyright: ignore[reportCallIssue]
+    timeout_seconds=None,
+    task_runner=ThreadPoolTaskRunner(max_workers=10),  # pyright: ignore[reportArgumentType]
+)
+def inference_custom(concept_ids: list[str]):
+    """
+    Run inference on specific user-provided concepts.
+
+    This is the custom path used by the CLI to run inference on a selected set of concepts.
+
+    Args:
+        concept_ids: List of Wikibase IDs to process (e.g., ["Q69", "Q47"])
+
+    Returns:
+        List[dict]: Results for each processed concept
+    """
+    if not concept_ids:
+        raise ValueError("concept_ids must not be empty")
+
+    # Convert and validate requested concept IDs
+    logger.info(f"Processing requested concepts: {concept_ids}")
+    requested_ids = [WikibaseID(id) for id in concept_ids]
+    logger.info(f"Processing {len(requested_ids)} requested concept(s)")
+    return _run_inference_on_concepts(wikibase_ids=requested_ids)
+
+
+# CLI Interface
+app = typer.Typer(
+    name="vibe-checker",
+    help="Climate policy vibe checker inference pipeline CLI",
+    pretty_exceptions_enable=False,
+)
+
+
+@app.command()
+def run(
+    concept: Optional[list[str]] = typer.Option(
+        None,
+        "--concept",
+        "-c",
+        help=(
+            "Specific concept IDs to process (e.g., Q69, Q47). If left empty, "
+            "concept IDs will be loaded from the concepts.yml file in S3."
+        ),
+    ),
+) -> None:
+    """
+    Run inference on climate policy concepts.
+
+    Two modes:
+    1. CONFIG mode (default): Process all concepts defined in concepts.yml (S3)
+    2. CUSTOM mode: Process only the specified concept IDs
+
+    Examples:
+        vibe-checker run                    # CONFIG mode: Run all concepts from config
+        vibe-checker run --concept Q69      # CUSTOM mode: Run single concept
+        vibe-checker run -c Q69 -c Q47      # CUSTOM mode: Run multiple concepts
+    """
+    try:
+        if concept:
+            # Custom mode: user-specified concepts
+            typer.echo(f"Running inference for {len(concept)} concept(s)...", err=False)
+            inference_custom(concept_ids=concept)
+        else:
+            # Config mode: load from S3 concepts.yml
+            typer.echo("Running inference for all concepts from config...", err=False)
+            inference_from_config()
+        typer.echo("✓ Inference completed successfully", err=False)
+    except ValueError as e:
+        typer.echo(f"✗ Error: {str(e)}", err=True)
+        raise typer.Exit(code=1)
+    except Exception as e:
+        typer.echo(f"✗ Unexpected error: {str(e)}", err=True)
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":
-    flow_results = vibe_checker_inference()
+    app()
