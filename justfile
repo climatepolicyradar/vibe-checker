@@ -81,20 +81,27 @@ refresh-webapp-task:
 # Run all steps to deploy the webapp
 deploy-webapp: build-webapp push-webapp refresh-webapp-task
 
-# Deploy the Prefect inference pipeline
-deploy-pipeline:
-    cd {{pipeline_dir}}
-    export BUCKET_NAME=$(cd ../{{infra_dir}} && pulumi stack output bucket_name)
-    export AWS_REGION={{aws_region}}
-    export AWS_PROFILE={{aws_profile}}
-    prefect cloud login
-    prefect deploy --name vibe-checker-inference
+# Log in to Prefect Cloud on the command line
+prefect-login:
+    uv run prefect cloud login
 
-# Run the deployed inference pipeline
-run-pipeline:
-    prefect deployment run vibe-checker-inference/vibe-checker-inference
+# Deploy inference pipeline to labs (both standard and custom)
+deploy-pipeline: prefect-login
+    cd {{pipeline_dir}} && \
+    export BUCKET_NAME=$(cd ../{{infra_dir}} && pulumi stack output bucket_name) && \
+    uv run prefect deploy inference.py:inference_from_config \
+      --name "vibe-check-inference-all" \
+      --pool "mvp-labs-ecs" && \
+    uv run prefect deploy inference.py:inference_custom \
+      --name "vibe-check-inference-custom" \
+      --pool "mvp-labs-ecs"
 
-# Check pipeline deployment status
-check-pipeline:
-    prefect deployment ls
-    prefect flow-run ls
+
+# Run the inference pipeline (optionally with specific concepts)
+run-pipeline concept_ids='': prefect-login
+    @if [ -n '{{concept_ids}}' ]; then \
+      uv run prefect deployment run "vibe-check-inference-custom/vibe-check-inference-custom" \
+        --param concept_ids='{{concept_ids}}'; \
+    else \
+      uv run prefect deployment run "vibe-check-inference-all/vibe-check-inference-all"; \
+    fi

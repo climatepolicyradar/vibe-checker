@@ -34,25 +34,6 @@ If instead you want to run the pipeline on a specific set of concepts, you can r
 vibe-checker run --concept Q420 --concept Q69 
 ```
 
-## Deploying and running the Prefect flow
-
-First, you'll need to login to Prefect Cloud and create a work pool:
-
-```bash
-prefect cloud login
-prefect work-pool create vibe-checker-pool --type docker  # one-time setup
-
-prefect deploy --name vibe-check-inference inference.py:inference_from_config
-prefect deploy --name vibe-check-inference-custom inference.py:inference_custom
-```
-
-### Run Deployments
-
-```bash
-prefect deployment run vibe-check-inference/vibe-check-inference
-prefect deployment run vibe-check-inference-custom/vibe-check-inference-custom --param concept_ids='["Q69"]'
-```
-
 ## S3 Structure
 
 The s3 bucket is structured as follows:
@@ -86,3 +67,38 @@ aws s3 cp concepts.yml s3://{BUCKET_NAME}/concepts.yml
 ```
 
 The inference pipeline will now process the new set of concepts the next time it's run.
+
+## Working with Prefect
+
+### Deploying the flows to ECS
+
+We use Prefect to run pipelines on AWS ECS infrastructure. You can deploy flows directly from this repo using the `just` recipe:
+
+```bash
+just deploy-pipeline
+```
+
+This will:
+
+- Authenticate with Prefect Cloud
+- Export `BUCKET_NAME` from the Pulumi stack (required for initialising the flow)
+- Deploy flows to the specified pool (`mvp-labs-ecs`)
+
+### Running the deployed flows
+
+```bash
+# Run on all concepts in the config.yml file (uses the default inference-all deployment)
+just run-pipeline
+
+# Run on specific concepts (uses the custom inference deployment)
+just run-pipeline concept_ids='["Q69"]'
+just run-pipeline concept_ids='["Q69","Q420"]'
+```
+
+### Updating Deployments
+
+When you update the inference pipeline code, make sure you redeploy the flows to update the deployments:
+
+```bash
+just deploy-pipeline
+```

@@ -16,6 +16,7 @@ pipeline = [
     "typer>=0.15.1",
     "sentence-transformers>=5.1.0",
     "transformers>=4.56.1",
+    "click<8.2.0",
     "knowledge-graph @ git+https://github.com/climatepolicyradar/knowledge-graph@2d2f1f7e10825114bb6419a6b5783700936f5bc4"
 ]
 

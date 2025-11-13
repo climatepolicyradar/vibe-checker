@@ -1,0 +1,44 @@
+# Welcome to your prefect.yaml file! You can use this file for storing and managing
+# configuration for deploying your flows. We recommend committing this file to source
+# control along with your flow code.
+
+# Generic metadata about this project
+name: pipeline
+prefect-version: 3.4.17
+
+# build section allows you to manage and build docker images
+build: null
+
+# push section allows you to manage if and how this project is uploaded to remote locations
+push: null
+
+# pull section allows you to provide instructions for cloning this project in remote locations
+pull:
+- prefect.deployments.steps.git_clone:
+    repository: git@github.com:climatepolicyradar/vibe-checker.git
+    branch: main
+
+# the deployments section allows you to provide configuration for deploying flows
+deployments:
+- name: vibe-check-inference-all
+  version: null
+  tags: []
+  concurrency_limit: null
+  description: |-
+    Run inference on all concepts defined in concepts.yml (S3 config).
+
+    This is the standard CI path that loads the concept list from the S3 configuration.
+
+    Returns:
+        List[dict]: Results for each processed concept
+  entrypoint: inference.py:inference_from_config
+  parameters: {}
+  work_pool:
+    name: mvp-labs-ecs
+    work_queue_name: null
+    job_variables: {}
+  schedules:
+  - cron: 0 12 * * 0
+    timezone: UTC
+    day_or: true
+    active: true
