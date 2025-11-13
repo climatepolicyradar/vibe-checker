@@ -47,14 +47,6 @@ lint-python:
 lint-webapp:
     cd {{webapp_dir}} && npm run lint
 
-# Export Pulumi outputs to .env.local for local development
-export-environment-variables-from-infra:
-    cd {{infra_dir}}
-    pulumi stack output --json | jq -r 'to_entries | .[] | "\(.key)=\(.value)"' > ../{{webapp_dir}}/.env
-    echo "Variables exported to {{webapp_dir}}/.env.local"
-    export $(pulumi stack output --json | jq -r 'to_entries | .[] | "\(.key)=\(.value)"')
-    echo "Environment variables exported to the current shell"
-
 # Deploy AWS infrastructure with Pulumi
 deploy-infra:
     cd {{infra_dir}}

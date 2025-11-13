@@ -14,6 +14,7 @@ from pulumi_aws import (
     lb,
     route53,
     s3,
+    ssm,
 )
 
 caller_identity = get_caller_identity()
@@ -45,6 +46,15 @@ certificate = acm.get_certificate(
 
 # s3 bucket for storing the data
 bucket = s3.Bucket(f"cpr-{app_name}")
+
+# Store bucket name in SSM Parameter Store for services to discover
+bucket_param = ssm.Parameter(
+    f"{app_name}-bucket-name-param",
+    name=f"/{app_name}/bucket-name",
+    type="String",
+    value=bucket.bucket,
+    description="S3 bucket name for vibe-checker data",
+)
 
 # ECR repository for storing the container image, and ECS cluster for running the webapp
 repository = ecr.Repository(app_name)
@@ -267,6 +277,20 @@ iam.RolePolicyAttachment(
     f"{app_name}-s3-read-policy",
     role=task_role.name,
     policy_arn=s3_read_only_policy.arn,
+)
+
+# Attach SSM read-only policy to task role (for fetching config from Parameter Store)
+iam.RolePolicyAttachment(
+    f"{app_name}-ssm-read-policy",
+    role=task_role.name,
+    policy_arn="arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess",
+)
+
+# Attach SSM read-only policy to execution role (for webapp initialization)
+iam.RolePolicyAttachment(
+    f"{app_name}-execution-ssm-read-policy",
+    role=execution_role.name,
+    policy_arn="arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess",
 )
 
 # Application Load Balancer
