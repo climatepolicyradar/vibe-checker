@@ -6,11 +6,10 @@ The code in this directory can be run as a Prefect flow, or as a standalone CLI.
 
 ## Setup
 
-You'll need to install the dependencies and set a bunch of environment variables by running:
+Install the pipeline dependencies:
 
 ```bash
 just install-pipeline
-just export-environment-variables-from-infra
 ```
 
 ## Using the CLI from your local machine
@@ -81,8 +80,9 @@ just deploy-pipeline
 This will:
 
 - Authenticate with Prefect Cloud
-- Export `BUCKET_NAME` from the Pulumi stack (required for initialising the flow)
-- Deploy flows to the specified pool (`mvp-labs-ecs`)
+- Deploy both standard and custom inference flows to `mvp-labs-ecs`
+
+**Note:** The bucket name is automatically discovered from SSM Parameter Store at runtime, so you don't need to configure it.
 
 ### Running the deployed flows
 

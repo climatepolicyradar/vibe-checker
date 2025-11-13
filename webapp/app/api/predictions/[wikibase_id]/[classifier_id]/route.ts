@@ -1,4 +1,4 @@
-import { BUCKET_NAME, createS3Client } from "@/lib/s3";
+import { createS3Client, getBucketName } from "@/lib/s3";
 
 import { FilterParams } from "@/types/filters";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
@@ -59,11 +59,7 @@ export async function GET(
       console.log(`Cache miss for predictions: ${key}, fetching from S3...`);
 
       const s3Client = createS3Client();
-      const bucket = BUCKET_NAME;
-
-      if (!bucket) {
-        throw new Error("BUCKET_NAME environment variable is not set");
-      }
+      const bucket = await getBucketName();
 
       const command = new GetObjectCommand({ Bucket: bucket, Key: key });
       const response = await s3Client.send(command);

@@ -1,12 +1,15 @@
+import { createS3Client, getBucketName } from "@/lib/s3";
+import { errorResponse, successResponse } from "@/lib/api-response";
+
+import { ClassifierData } from "@/types/classifiers";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import cache from "@/lib/cache";
-import { createS3Client, BUCKET_NAME } from "@/lib/s3";
-import { successResponse, errorResponse } from "@/lib/api-response";
-import { ClassifierData } from "@/types/classifiers";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ concept_id: string; classifier_id: string }> },
+  {
+    params,
+  }: { params: Promise<{ concept_id: string; classifier_id: string }> },
 ) {
   try {
     const { concept_id, classifier_id } = await params;
@@ -20,13 +23,11 @@ export async function GET(
       return successResponse(cachedData);
     }
 
-    console.log(`Cache miss for classifier: ${concept_id}/${classifier_id}, fetching from S3...`);
+    console.log(
+      `Cache miss for classifier: ${concept_id}/${classifier_id}, fetching from S3...`,
+    );
     const s3Client = createS3Client();
-    const bucket = BUCKET_NAME;
-
-    if (!bucket) {
-      throw new Error("BUCKET_NAME environment variable is not set");
-    }
+    const bucket = await getBucketName();
 
     const key = `${concept_id}/${classifier_id}/classifier.json`;
 
@@ -43,7 +44,9 @@ export async function GET(
 
     // Store in cache
     cache.set(cacheKey, classifierData);
-    console.log(`Classifier data cached successfully for: ${concept_id}/${classifier_id}`);
+    console.log(
+      `Classifier data cached successfully for: ${concept_id}/${classifier_id}`,
+    );
 
     return successResponse(classifierData);
   } catch (error) {

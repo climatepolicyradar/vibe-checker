@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import typer
 import yaml
+from botocore.exceptions import ClientError
 from knowledge_graph.classifier import ClassifierFactory
 from knowledge_graph.identifiers import WikibaseID
 from knowledge_graph.labelled_passage import LabelledPassage
@@ -25,12 +26,32 @@ from prefect.task_runners import ThreadPoolTaskRunner
 from rich.logging import RichHandler
 from sentence_transformers import SentenceTransformer
 
-# Get bucket name with validation
-if not (BUCKET_NAME := os.getenv("BUCKET_NAME", "")):
-    raise ValueError(
-        "BUCKET_NAME must be set.\n"
-        "For local dev: export BUCKET_NAME=$(pulumi stack output bucket_name)"
+aws_region = os.getenv("AWS_REGION", "eu-west-1")
+aws_profile = os.getenv("AWS_PROFILE", "labs")
+
+
+def _get_bucket_name_from_ssm() -> str:
+    """Fetch bucket name from AWS Systems Manager Parameter Store."""
+    session = boto3.Session(
+        region_name=aws_region,
+        profile_name=aws_profile,
     )
+    ssm_client = session.client("ssm")
+    try:
+        response = ssm_client.get_parameter(
+            Name="/vibe-checker/bucket-name", WithDecryption=False
+        )
+        return response["Parameter"]["Value"]
+    except ClientError as e:
+        raise ValueError(
+            f"Failed to retrieve bucket name from SSM: {str(e)}\n"
+            "Ensure the SSM parameter '/vibe-checker/bucket-name' exists "
+            "and the service has SSM read permissions"
+        ) from e
+
+
+# Get bucket name from SSM Parameter Store
+BUCKET_NAME = _get_bucket_name_from_ssm()
 
 # Configure logging
 logging.basicConfig(
@@ -44,13 +65,8 @@ logger = get_logger(__name__)
 def get_s3_client() -> S3Client:
     """Get a configured S3 client."""
     session = boto3.Session(
-        # For local development, you'll need to set the AWS_REGION / AWS_PROFILE env vars
-        # When the flow is running in AWS, the getenv values default to None, and boto3
-        # will auto-detect:
-        # - Region from EC2 metadata or AWS_DEFAULT_REGION
-        # - Credentials from IAM role or ~/.aws/credentials
-        region_name=os.getenv("AWS_REGION"),
-        profile_name=os.getenv("AWS_PROFILE"),
+        region_name=aws_region,
+        profile_name=aws_profile,
     )
     return session.client("s3")
 

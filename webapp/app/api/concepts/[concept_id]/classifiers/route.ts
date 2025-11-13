@@ -1,11 +1,8 @@
-import {
-  GetObjectCommand,
-  ListObjectsV2Command,
-} from "@aws-sdk/client-s3";
+import { GetObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { createS3Client, getBucketName } from "@/lib/s3";
+import { errorResponse, successResponse } from "@/lib/api-response";
 
 import cache from "@/lib/cache";
-import { createS3Client, BUCKET_NAME } from "@/lib/s3";
-import { successResponse, errorResponse } from "@/lib/api-response";
 
 export async function GET(
   _request: Request,
@@ -23,13 +20,11 @@ export async function GET(
       return successResponse(cachedData);
     }
 
-    console.log(`Cache miss for classifiers: ${concept_id}, fetching from S3...`);
+    console.log(
+      `Cache miss for classifiers: ${concept_id}, fetching from S3...`,
+    );
     const s3Client = createS3Client();
-    const bucket = BUCKET_NAME;
-
-    if (!bucket) {
-      throw new Error("BUCKET_NAME environment variable is not set");
-    }
+    const bucket = await getBucketName();
 
     // List all objects under the concept_id prefix
     const command = new ListObjectsV2Command({
@@ -57,7 +52,8 @@ export async function GET(
             Key: classifierKey,
           });
           const classifierResponse = await s3Client.send(classifierCommand);
-          const classifierText = await classifierResponse.Body?.transformToString();
+          const classifierText =
+            await classifierResponse.Body?.transformToString();
 
           if (classifierText) {
             const classifierData = JSON.parse(classifierText);
@@ -67,7 +63,10 @@ export async function GET(
             };
           }
         } catch (error) {
-          console.warn(`Could not fetch classifier metadata for ${classifierId}:`, error);
+          console.warn(
+            `Could not fetch classifier metadata for ${classifierId}:`,
+            error,
+          );
         }
 
         // Return classifier without date if we couldn't fetch metadata
@@ -75,7 +74,7 @@ export async function GET(
           id: classifierId,
           date: null,
         };
-      })
+      }),
     );
 
     // Sort by date (most recent first), putting null dates at the end
@@ -87,7 +86,7 @@ export async function GET(
     });
 
     // Return just the IDs in sorted order
-    const sortedClassifierIds = sortedClassifiers.map(c => c.id);
+    const sortedClassifierIds = sortedClassifiers.map((c) => c.id);
 
     // Store in cache
     cache.set(cacheKey, sortedClassifierIds);

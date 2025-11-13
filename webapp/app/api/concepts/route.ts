@@ -1,33 +1,26 @@
-import {
-  GetObjectCommand,
-  ListObjectsV2Command,
-} from "@aws-sdk/client-s3";
+import { EnhancedConcept, YamlConcept } from "@/types/concepts";
+import { GetObjectCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { createS3Client, getBucketName } from "@/lib/s3";
+import { errorResponse, successResponse } from "@/lib/api-response";
 
-import { load } from "js-yaml";
 import cache from "@/lib/cache";
-import { createS3Client, BUCKET_NAME } from "@/lib/s3";
-import { successResponse, errorResponse } from "@/lib/api-response";
-import { YamlConcept, EnhancedConcept } from "@/types/concepts";
 import { getConceptDefaults } from "@/lib/concept-helpers";
+import { load } from "js-yaml";
 
 export async function GET() {
   try {
     // Check cache first
-    const cacheKey = 'concepts';
+    const cacheKey = "concepts";
     const cachedData = cache.get(cacheKey);
 
     if (cachedData) {
-      console.log('Cache hit for concepts');
+      console.log("Cache hit for concepts");
       return successResponse(cachedData);
     }
 
-    console.log('Cache miss for concepts, fetching from S3...');
+    console.log("Cache miss for concepts, fetching from S3...");
     const s3Client = createS3Client();
-    const bucket = BUCKET_NAME;
-
-    if (!bucket) {
-      throw new Error("BUCKET_NAME environment variable is not set");
-    }
+    const bucket = await getBucketName();
 
     // Fetch concepts.yml
     const conceptsKey = "concepts.yml";
@@ -100,7 +93,8 @@ export async function GET() {
 
             enhancedConcepts.push({
               ...defaults,
-              preferred_label: conceptMetadata.preferred_label || defaults.preferred_label,
+              preferred_label:
+                conceptMetadata.preferred_label || defaults.preferred_label,
               description: conceptMetadata.description || defaults.description,
               n_classifiers: conceptJsonKeys.length,
             });
@@ -130,7 +124,7 @@ export async function GET() {
 
     // Store in cache
     cache.set(cacheKey, enhancedConcepts);
-    console.log('Concepts data cached successfully');
+    console.log("Concepts data cached successfully");
 
     return successResponse(enhancedConcepts);
   } catch (error) {

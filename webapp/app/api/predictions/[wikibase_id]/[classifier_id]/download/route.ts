@@ -1,4 +1,4 @@
-import { BUCKET_NAME, createS3Client } from "@/lib/s3";
+import { createS3Client, getBucketName } from "@/lib/s3";
 
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { NextResponse } from "next/server";
@@ -15,11 +15,7 @@ export async function GET(
     const key = `${wikibase_id}/${classifier_id}/predictions.jsonl`;
 
     const s3Client = createS3Client();
-    const bucket = BUCKET_NAME;
-
-    if (!bucket) {
-      throw new Error("BUCKET_NAME environment variable is not set");
-    }
+    const bucket = await getBucketName();
 
     const command = new GetObjectCommand({ Bucket: bucket, Key: key });
     const response = await s3Client.send(command);
