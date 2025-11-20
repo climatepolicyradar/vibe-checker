@@ -46,3 +46,27 @@ torch = [
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
+
+[tool.ruff]
+line-length = 88
+lint.select = ["E", "F", "D", "I"]
+lint.ignore = [
+  "D100",
+  "D103",
+  "D104",
+  "D107",
+  "D202",
+  "D203",
+  "D212",
+  "D400",
+  "D401",
+  "D406",
+  "D407",
+  "D413",
+  "D415",
+  "E501",
+  "G201",
+]
+
+[tool.pylint."messages control"]
+disable = ["logging-fstring-interpolation"]  # W1203: allow f-strings in logging
